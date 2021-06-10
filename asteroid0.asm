@@ -1,49 +1,10 @@
 
-ColorNone .equ 00000000b
-ColorGame .equ 11111110b    ; Color for game
-ColorText .equ 10111111b    ; Color for text
-ColorBoth .equ 11111111b    ; Color for game and text
-; Palette colors, game
-; Col0000	.equ	ColorNone	;0
-; Col0001	.equ	ColorGame	;1
-; Col0010	.equ	ColorGame	;2
-; Col0011	.equ	ColorGame	;3
-; Col0100	.equ	ColorText	;4
-; Col0101	.equ	ColorBoth	;5
-; Col0110	.equ	ColorBoth	;6
-; Col0111	.equ	ColorBoth	;7
-; Col1000	.equ	ColorNone	;8
-; Col1001	.equ	ColorGame	;9
-; Col1010	.equ	ColorGame	;10
-; Col1011	.equ	ColorGame	;11
-; Col1100	.equ	ColorText	;12
-; Col1101	.equ	ColorBoth	;13
-; Col1110	.equ	ColorBoth	;14
-; Col1111	.equ	ColorBoth	;15
-; Palette colors, title screen
-Col0000	.equ	$00	;0
-Col0001	.equ	$C0	;1
-Col0010	.equ	$07	;2
-Col0011	.equ	$C7	;3
-Col0100	.equ	$38	;4
-Col0101	.equ	$F8	;5
-Col0110	.equ	$3F	;6
-Col0111	.equ	$FF	;7
-Col1000	.equ	$00	;8
-Col1001	.equ	$00	;9
-Col1010	.equ	$00	;10
-Col1011	.equ	$00	;11
-Col1100	.equ	$00	;12
-Col1101	.equ	$00	;13
-Col1110	.equ	$00	;14
-Col1111	.equ	$00	;15
-
 ;----------------------------------------------------------------------------
 
 Start	.equ	280h
 
 	.EXPORT KeyLineEx, KeyLine0, KeyLine1, KeyLine5, KeyLine6, KeyLine7
-	.EXPORT BorderColor, IntCount
+	.EXPORT BorderColor, IntCount, SetPaletteGame
 
 ;----------------------------------------------------------------------------
 
@@ -52,7 +13,7 @@ Start	.equ	280h
 	di
 	xra	a
 	out	10h
-	lxi	sp,100h
+	lxi	sp,0100h
 	lxi	h,0C3F3h
 	shld	0
 	mov	a,h
@@ -90,12 +51,26 @@ Start	.equ	280h
 ;	inr	b
 ;	jnz	Init_2
 
+	call	SetPaletteTitle
+
+Restart:
+	lxi	sp,100h
+	mvi	a, 88h
+	out	4		; initialize R-Sound 2
+
 	ei
-	hlt
+	jp Start
 
 ; Programming the Palette
+SetPaletteTitle:
+	lxi	h, PaletteTitle+15
+	jp	SetPalette
+SetPaletteGame:
+	lxi	h, PaletteGame+15
+SetPalette:
+	ei
+	hlt
 	lxi	d, 100Fh
-	lxi	h, Palette+15
 PaletLoop:
 	mov	a, e
 	out	2
@@ -112,14 +87,9 @@ PaletLoop:
 	dcr	d
 	out	0Ch
 	jnz	PaletLoop
+	ret
 
-Restart:
-	lxi	sp,100h
-	mvi	a, 88h
-	out	4		; initialize R-Sound 2
-
-	ei
-	jp Start
+;----------------------------------------------------------------------------
 
 KEYINT:
 	push	psw
@@ -178,11 +148,50 @@ KeyLine7:	.db 11111111b
 BorderColor:	.db 0		; border color number 0..15
 IntCount:	.db 0		; interrupt counter
 
-Palette:
-	.db Col0000,Col0001,Col0010,Col0011
-	.db Col0100,Col0101,Col0110,Col0111
-	.db Col1000,Col1001,Col1010,Col1011
-	.db Col1100,Col1101,Col1110,Col1111
+;----------------------------------------------------------------------------
+
+ColorNone .equ 00000000b
+ColorGame .equ 11111110b    ; Color for game
+ColorText .equ 10111111b    ; Color for text
+ColorBoth .equ 11111111b    ; Color for game and text
+; Palette colors, game
+PaletteGame:
+	.db	ColorNone	;0
+	.db	ColorGame	;1
+	.db	ColorGame	;2
+	.db	ColorGame	;3
+	.db	ColorText	;4
+	.db	ColorBoth	;5
+	.db	ColorBoth	;6
+	.db	ColorBoth	;7
+	.db	ColorNone	;8
+	.db	ColorGame	;9
+	.db	ColorGame	;10
+	.db	ColorGame	;11
+	.db	ColorText	;12
+	.db	ColorBoth	;13
+	.db	ColorBoth	;14
+	.db	ColorBoth	;15
+; Palette colors, title screen
+PaletteTitle:
+	.db	$00	;0
+	.db	$C0	;1
+	.db	$07	;2
+	.db	$C7	;3
+	.db	$38	;4
+	.db	$F8	;5
+	.db	$3F	;6
+	.db	$FF	;7
+	.db	$00	;8
+	.db	$00	;9
+	.db	$00	;10
+	.db	$00	;11
+	.db	$00	;12
+	.db	$00	;13
+	.db	$00	;14
+	.db	$00	;15
+
+;----------------------------------------------------------------------------
 
 ; LZSA1 decompressor code by Ivan Gorodetsky
 ; https://gitlab.com/ivagor/lzsa8080/-/blob/master/LZSA1/unlzsa1_small.asm

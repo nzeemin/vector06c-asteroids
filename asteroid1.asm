@@ -6,19 +6,23 @@
 
   ORG $0280
 Start:
-  ld sp,$A000
+  ld sp,$0100
 
-	ld hl,$A01C
-	ld (TextAddr),hl
-	ld hl,String
-	call DrawString
-	ld hl,$A00C
-	ld (TextAddr),hl
-	ld hl,String2
-	call DrawString
+; Drawing two text strings under the title screen
+  ld hl,$A01C
+  ld (TextAddr),hl
+  ld hl,String
+  call DrawString
+  ld hl,$A00C
+  ld (TextAddr),hl
+  ld hl,String2
+  call DrawString
 
-  di
-  halt
+  call WaitAnyKey
+  call ClearPlane0
+  call ClearPlane1
+  call ClearPlane2
+  call SetPaletteGame
 
 InitGame:
   call InitGameVars	; Initialize various game variables.
@@ -34,7 +38,7 @@ Start_1:
 ;  ld hl,54321
 ;  ld (Random16_seed2),hl
 
-  ld hl,$BDFF
+  ld hl,$BFFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
   add a,$30		; '0'
@@ -334,21 +338,33 @@ DrawNumber_3:
 	call DrawChar
 	ret 
 
+ClearPlane2:
+  ld hl,$C000
+  jp ClearPlane
+ClearPlane1:
+  ld hl,$E000
+  jp ClearPlane
 ClearPlane0:
-  ld b,$10
-  ld de,$0000
-  ld h,d
-  ld l,e
+  ld hl,$0000
+ClearPlane:
+  ld (ClearPlane_0+1),hl
+  xor a
+  ld h,a
+  ld l,a
+  ld d,a
+  ld e,a
   add hl,sp
-  ld (ClearPlane0_fin+1),hl
+  ld (ClearPlane_fin+1),hl
+  ld b,$10
+ClearPlane_0:
   ld sp,$0000
-ClearPlane0_1:
+ClearPlane_1:
 REPT 256
   push de
 ENDM
   dec b
-  jp nz,ClearPlane0_1
-ClearPlane0_fin:
+  jp nz,ClearPlane_1
+ClearPlane_fin:
   ld sp,0
   ret
 
