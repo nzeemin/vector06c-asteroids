@@ -8,6 +8,18 @@
 Start:
   ld sp,$A000
 
+	ld hl,$A01C
+	ld (TextAddr),hl
+	ld hl,String
+	call DrawString
+	ld hl,$A00C
+	ld (TextAddr),hl
+	ld hl,String2
+	call DrawString
+
+  di
+  halt
+
 InitGame:
   call InitGameVars	; Initialize various game variables.
 
@@ -45,14 +57,6 @@ Start_1:
 ;  ld hl,$ABB0
 ;  ld (TextAddr),hl
 ;  ld hl,SGameOver
-;  call DrawString
-;  ld hl,$A040
-;  ld (TextAddr),hl
-;  ld hl,String
-;  call DrawString
-;  ld hl,$A030
-;  ld (TextAddr),hl
-;  ld hl,String2
 ;  call DrawString
 
   call ClearPlane0
@@ -484,11 +488,14 @@ DrawSprite32x32_1:
   ret
 
 ;----------------------------------------------------------------------------
+AstroCodeEnd:
 
 INCLUDE "astrofont.asm"
 
 INCLUDE "astrosprs.asm"
 
+  ORG $A000
+INCLUDE "astrotscr.asm"
+
 ;----------------------------------------------------------------------------
-AstroCodeEnd:
 END

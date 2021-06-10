@@ -13,12 +13,12 @@ namespace SpriteRotate
 {
     class Program
     {
-
         static void Main(string[] args)
         {
             PrepareFont();
             //PrepareSpritesImage();
             PrepareSpritesText();
+            PrepareTitleScreen();
         }
 
         static void PrepareFont()
@@ -64,6 +64,76 @@ namespace SpriteRotate
 
                 Console.WriteLine("astrofont.asm saved");
             }
+        }
+
+        static void PrepareTitleScreen()
+        {
+            var bmp = new Bitmap(@"..\astrotscr.png");
+            var palette = new Color[]
+            {
+                Color.FromArgb(0, 0, 0),
+                Color.FromArgb(0, 0, 255),
+                Color.FromArgb(255, 0, 0),
+                Color.FromArgb(255, 0, 255),
+                Color.FromArgb(0, 255, 0),
+                Color.FromArgb(0, 255, 255),
+                Color.FromArgb(255, 255, 0),
+                Color.FromArgb(255, 255, 255),
+            };
+
+            var planes = new[] { new byte[8192], new byte[8192], new byte[8192] };
+
+            for (int col = 0; col < 32; col++)
+            {
+                for (int row = 0; row < 256; row++)
+                {
+                    int b0 = 0, b1 = 0, b2 = 0;
+                    for (int b = 0; b < 8; b++)
+                    {
+                        var color = bmp.GetPixel(col * 8 + b, 255 - row);
+
+                        int index = -1;
+                        for (int i = 0; i < 8; i++)
+                        {
+                            if (palette[i] == color)
+                            {
+                                index = i;
+                                break;
+                            }
+                        }
+
+                        if (index == -1)
+                            Console.WriteLine($"Color not found: {color}");
+
+                        b0 = b0 << 1;
+                        b0 |= index & 1;
+                        b1 = b1 << 1;
+                        b1 |= (index & 2) >> 1;
+                        b2 = b2 << 1;
+                        b2 |= (index & 4) >> 2;
+                    }
+
+                    planes[0][col * 256 + row] = (byte)b0;
+                    planes[1][col * 256 + row] = (byte)b1;
+                    planes[2][col * 256 + row] = (byte)b2;
+                }
+            }
+
+            //var rnd = new Random();
+            //rnd.NextBytes(planes[0]);
+
+            const string outfilename = "astrotscr.asm";
+            using (var writer = new StreamWriter(outfilename))
+            {
+                writer.WriteLine("TitleScreen:");
+                WriteByteArray(planes[2], writer);
+                writer.WriteLine("TitleScreen1:");
+                WriteByteArray(planes[1], writer);
+                writer.WriteLine("TitleScreen0:");
+                WriteByteArray(planes[0], writer);
+            }
+
+            Console.WriteLine($"{outfilename} saved");
         }
 
         static byte[] PrepareSpriteArray(Bitmap bmp, int x, int y, int cols, int rows)

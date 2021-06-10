@@ -3,23 +3,40 @@ ColorNone .equ 00000000b
 ColorGame .equ 11111110b    ; Color for game
 ColorText .equ 10111111b    ; Color for text
 ColorBoth .equ 11111111b    ; Color for game and text
-; Palette colors
-Col0000	.equ	ColorNone	;0
-Col0001	.equ	ColorGame	;1
-Col0010	.equ	ColorGame	;2
-Col0011	.equ	ColorGame	;3
-Col0100	.equ	ColorText	;4
-Col0101	.equ	ColorBoth	;5
-Col0110	.equ	ColorBoth	;6
-Col0111	.equ	ColorBoth	;7
-Col1000	.equ	ColorNone	;8
-Col1001	.equ	ColorGame	;9
-Col1010	.equ	ColorGame	;10
-Col1011	.equ	ColorGame	;11
-Col1100	.equ	ColorText	;12
-Col1101	.equ	ColorBoth	;13
-Col1110	.equ	ColorBoth	;14
-Col1111	.equ	ColorBoth	;15
+; Palette colors, game
+; Col0000	.equ	ColorNone	;0
+; Col0001	.equ	ColorGame	;1
+; Col0010	.equ	ColorGame	;2
+; Col0011	.equ	ColorGame	;3
+; Col0100	.equ	ColorText	;4
+; Col0101	.equ	ColorBoth	;5
+; Col0110	.equ	ColorBoth	;6
+; Col0111	.equ	ColorBoth	;7
+; Col1000	.equ	ColorNone	;8
+; Col1001	.equ	ColorGame	;9
+; Col1010	.equ	ColorGame	;10
+; Col1011	.equ	ColorGame	;11
+; Col1100	.equ	ColorText	;12
+; Col1101	.equ	ColorBoth	;13
+; Col1110	.equ	ColorBoth	;14
+; Col1111	.equ	ColorBoth	;15
+; Palette colors, title screen
+Col0000	.equ	$00	;0
+Col0001	.equ	$C0	;1
+Col0010	.equ	$07	;2
+Col0011	.equ	$C7	;3
+Col0100	.equ	$38	;4
+Col0101	.equ	$F8	;5
+Col0110	.equ	$3F	;6
+Col0111	.equ	$FF	;7
+Col1000	.equ	$00	;8
+Col1001	.equ	$00	;9
+Col1010	.equ	$00	;10
+Col1011	.equ	$00	;11
+Col1100	.equ	$00	;12
+Col1101	.equ	$00	;13
+Col1110	.equ	$00	;14
+Col1111	.equ	$00	;15
 
 ;----------------------------------------------------------------------------
 
@@ -64,14 +81,14 @@ Start	.equ	280h
 ; 	call	unlzsa1
 
 ; Clear memory from A000h to FFFFh
-	xra	a
-	lxi	b,0A000h	; destination addr
-Init_2:
-	stax	b
-	inr	c
-	jnz	Init_2
-	inr	b
-	jnz	Init_2
+;	xra	a
+;	lxi	b,0A000h	; destination addr
+;Init_2:
+;	stax	b
+;	inr	c
+;	jnz	Init_2
+;	inr	b
+;	jnz	Init_2
 
 	ei
 	hlt
@@ -137,7 +154,7 @@ KEYINT:
 	out	0
 	mvi	a, 2
 	out	1
-	mvi	a, 23
+	mvi	a, $FF
 	out	3		; scrolling
 	lda	BorderColor
 	ani	0Fh
