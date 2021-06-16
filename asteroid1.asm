@@ -33,6 +33,48 @@ InitWaves:
   call DrawShipLives	;TEST
   call DrawPlayerScore	;TEST
 
+  ld a,1
+  ld (ShipStatus),a	;TEST: activate the ship
+  ld (AstObjects),a	;TEST: activate the rock
+  ld hl,500
+  ld (AstObjects+2),hl	;TEST: set the rock X
+  ld (AstObjects+4),hl	;TEST: set the rock Y
+  ld a,7
+  ld (AstObjects+6),a  ;TEST: set the rock dX
+  ld (AstObjects+7),a  ;TEST: set the rock dY
+  ld a,1
+  ld (AstObjects+8),a	;TEST: activate the rock
+  ld hl,100
+  ld (AstObjects+8+2),hl  ;TEST: set the rock X
+  ld hl,900
+  ld (AstObjects+8+4),hl  ;TEST: set the rock Y
+  ld a,10
+  ld (AstObjects+8+6),a  ;TEST: set the rock dX
+  ld (AstObjects+8+7),a  ;TEST: set the rock dY
+  ld a,1
+  ld (AstObjects+16),a	;TEST: activate the rock
+  ld hl,1800
+  ld (AstObjects+16+2),hl  ;TEST: set the rock X
+  ld (AstObjects+16+4),hl  ;TEST: set the rock Y
+  ld a,12
+  ld (AstObjects+16+6),a  ;TEST: set the rock dX
+  ld (AstObjects+16+7),a  ;TEST: set the rock dY
+  ld a,1
+  ld (AstObjects+32),a	;TEST: activate the rock
+  ld hl,1900
+  ld (AstObjects+32+2),hl  ;TEST: set the rock X
+  ld hl,600
+  ld (AstObjects+32+4),hl  ;TEST: set the rock Y
+  ld a,1
+  ld (AstObjects+40),a	;TEST: activate the rock
+  ld hl,300
+  ld (AstObjects+40+2),hl  ;TEST: set the rock X
+  ld hl,1850
+  ld (AstObjects+40+4),hl  ;TEST: set the rock Y
+  ld a,5
+  ld (AstObjects+40+6),a  ;TEST: set the rock dX
+  ld (AstObjects+40+7),a  ;TEST: set the rock dY
+
 Start_1:
 ;  ld hl,12345
 ;  ld (Random16_seed1),hl
@@ -43,45 +85,13 @@ Start_1:
   ld (TextAddr),hl
   ld a,(LastIntCount)
   add a,$30		; '0'
-  call DrawChar
+  call DrawChar		; show frame count
+
+  call UpdateObjects
 
   call ClearPlane0
 
-  ld hl,ShipXPos
-  call CalculateScreenAddr
-  ld de,RockB1S0
-  call DrawSprite32x32
-
-  ld b,10
-Start_A:
-  push bc
-  ld hl,ShipXPos
-  call CalculateScreenAddr
-  call Random16
-  ld e,l
-  ld a,h
-  and $1F
-  or $E0
-  ld h,a		; we have screen address
-  ld a,e
-  and $3F
-  ld e,a
-  add a,a
-  add a,e		; now A = N * 3
-  ex de,hl
-  ld h,$00
-  ld l,a
-  add hl,hl		; now HL = N * 6
-  add hl,hl		; now HL = N * 12
-  add hl,hl		; now HL = N * 24
-  add hl,hl		; now HL = N * 48
-  ld bc,Ship00S0
-  add hl,bc		; we have sprite address
-  ex de,hl
-  call DrawSprite24x16
-  pop bc
-  dec b
-  jp nz,Start_A
+  call DrawObjects
 
   ld a,(IntCount)
   ld (LastIntCount),a
@@ -134,7 +144,32 @@ ScrYPos:		dw	0
 SaucerXSpeed:		db	0
 SaucerYSpeed:		db	0
 ; Asteroid object records, 26 records
-AstObjects:		ds 8 * 26
+AstObjects:		db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
+			db	0, 2, 0,0,0,0, 0,0
 ; Ship bullet objects, 4 records
 ShipShotObjects:	ds 8 * 4
 ; Soucer bullet objects, 2 records
@@ -155,6 +190,103 @@ InitShipsPerGame:
   ld (PlayerScore+1),a
   ld (CurAsteroids),a
   ret
+
+DrawObjects:
+  ld b,32		; number of objects
+  ld hl,Objects
+DrawObjects_1:
+  ld a,(hl)		; get status byte
+  or a			; empty object?
+  jp z,DrawObjects_next	; yes => skip it
+  push bc
+  push hl		; store object address
+; get object type and call the draw procedure
+  inc hl
+  ld a,(hl)		; get object type
+  push af		; store object type
+  inc hl		; now HL points to the object coords
+  call CalculateScreenAddr
+  ex de,hl		; now DE = screen address
+  ld (DrawObjects_2+1),a  ; store the shift
+; calculate draw procedure address
+  pop af		; restore object type
+  and 3			; 0..3
+  add a,a
+  ld c,a
+  ld b,0
+  ld hl,DrawProcTable
+  add hl,bc
+  ld a,(hl)
+  inc hl
+  ld h,(hl)
+  ld l,a		; now HL = draw procedure address
+; call the draw procedure
+  ld (DrawObjects_3+1),hl  ; prepare the call parameter
+DrawObjects_2:
+  ld a,$00		; shift 0..7
+  pop hl		; restore record address
+  push hl		; and store again
+DrawObjects_3:
+  call $0000		; call the draw procedure; HL = object address, DE = screen address, A = shift 0..7
+; finishing the iteration
+  pop hl		; restore record address
+  pop bc
+DrawObjects_next:
+  ld de,$0008		; record size
+  add hl,de		; next object record
+  dec b
+  jp nz,DrawObjects_1
+  ret
+
+DrawProcTable:
+  dw DrawShipProc	; 0
+  dw DrawSauserProc	; 1
+  dw DrawRockProc	; 2
+  dw DrawBulletProc	; 3
+
+DrawShipProc:
+  ex de,hl		; now HL = screen address
+  ld de,Ship08S0
+  call DrawSprite24x16
+;TODO
+  ret
+
+DrawSauserProc:
+;TODO
+  ret
+
+DrawRockProc:
+  ld hl,RockB1S0	; base sprite address
+  call Multiply128	; calculate sprite address based on shift A = 0..7
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite32x32
+;TODO
+  ret
+
+DrawBulletProc:
+;TODO
+  ret
+
+; Multiply A by 128; A = 0..7 by 128, HL = base address
+; Result: HL = base address + A * 128
+Multiply128:
+  push hl		; store base address
+  and 7
+  add a,a
+  ld c,a
+  ld b,0
+  ld hl,TableMul128
+  add hl,bc		; now HL = address in the table
+  ld a,(hl)		; get lo
+  inc hl
+  ld h,(hl)		; get hi
+  ld l,a		; now HL = A * 128
+  pop bc		; restore base address
+  add hl,bc
+  ret
+TableMul128:
+	dw	0, 128, 128*2, 128*3, 128*4, 128*5, 128*6, 128*7
+
 
 ; Calculate screen address and shift from the object coordinates
 ;   HL = object address + 2, points to X pos word, next one is Y pos word
@@ -211,26 +343,25 @@ CalculateScreenAddr:
 ; get Y position
   ex de,hl		; now HL = object addr + 3
   inc hl
-  ld a,(hl)		; get Y lo
+  ld e,(hl)		; get Y lo
   inc hl
-  ld e,a
   ld a,(hl)		; get Y hi; we don't need HL value anymore
 ; divide Y position by 8
   rra			; 1 hi
-  ld h,a
-  ld a,l
+  ld d,a
+  ld a,e
   rra			; 1 lo
-  ld l,a
-  ld a,h
+  ld e,a
+  ld a,d
   rra			; 2 hi
-  ld h,a
-  ld a,l
+  ld d,a
+  ld a,e
   rra			; 2 lo
-  ld l,a
-  ld a,h
+  ld e,a
+  ld a,d
   rra			; 3 hi
-  ld h,a
-  ld a,l
+  ld d,a
+  ld a,e
   rra			; 3 lo, now A = 0..255 screen Y pos
 ; prepare results and return
   ld l,a
@@ -241,7 +372,56 @@ CalculateScreenAddr:
   ret
 
 UpdateObjects:
-;TODO
+  ld b,32		; number of objects
+  ld hl,Objects
+UpdateObjects_1:
+  ld a,(hl)		; get status byte
+  or a			; empty object?
+  jp z,UpdateObjects_next	; yes => skip it
+  push bc
+  push hl		; store object address
+  inc hl
+  inc hl
+  inc hl
+  inc hl
+  inc hl
+  inc hl		; now HL = object address + 6, at X speed
+; update X
+  ld a,(hl)		; get X speed
+  or a
+  jp z,UpdateObjects_skipX
+  push hl		; store HL = object address + 6
+  dec hl
+  dec hl
+  dec hl
+  dec hl		; now HL = object address + 2, at X lo
+;TODO: A could be positive or negative
+  add a,(hl)
+  ld (hl),a
+;
+  pop hl		; restore HL = object address + 6
+UpdateObjects_skipX:
+; update Y
+  inc hl		; now HL = object address + 7, at Y speed
+  ld a,(hl)		; get Y speed
+  or a
+  jp z,UpdateObjects_skipY
+  dec hl
+  dec hl
+  dec hl		; now HL = object address + 4, at Y lo
+;TODO: A could be positive or negative
+  add a,(hl)
+  ld (hl),a
+;
+UpdateObjects_skipY:
+; finishing the iteration
+  pop hl		; restore object address
+  pop bc
+UpdateObjects_next:
+  ld de,$0008		; object record size
+  add hl,de		; next object record
+  dec b
+  jp nz,UpdateObjects_1
   ret
 
 ; Saucer Reset
@@ -345,8 +525,7 @@ WaitKeyUp:
   ret
 
 ; Returns: A=key code, $00 no key; Z=0 for key, Z=1 for no key
-; Key codes: Down=$01, Left=$02, Right=$03, Up=$04, Look/shoot=$05
-;            Inventory=$06, Escape=$07, Switch look/shoot=$08, Enter=$09, Menu=$0F
+; Key codes: Fire=$01, Left=$02, Right=$04, Hyper=$08
 ReadKeyboard:
   ld hl,ReadKeyboard_map  ; Point HL at the keyboard list
   ld b,6                  ; number of rows to check
@@ -385,7 +564,7 @@ ReadKeyboard_map:
   DW KeyLine6
   DB $00,$00,$00,$00,$00,$0F,$00,$0F  ;  W   V   U   T   S   R   Q   P
   DW KeyLine7
-  DB $05,$00,$00,$00,$00,$00,$00,$00  ; Spc  ^   ]   \   [   Z   Y   X
+  DB $01,$00,$00,$00,$00,$00,$00,$00  ; Spc  ^   ]   \   [   Z   Y   X
 
 TextAddr:  DW  $A0FF  ; Address on the screen to draw next char
 
@@ -448,31 +627,6 @@ DrawChar_next:
   pop bc
   pop hl
   ret
-
-; Draw decimal number HL in 5 digits
-DrawNumber5:
-	ld	bc,-10000
-	call	DrawNumber_1
-	ld	bc,-1000
-	call	DrawNumber_1
-; Draw decimal number HL in 3 digits
-DrawNumber3:
-	ld	bc,-100
-	call	DrawNumber_1
-	ld	c,-10
-	call	DrawNumber_1
-	ld	c,-1
-DrawNumber_1:
-	ld	a,'0'-1
-DrawNumber_2:
-	inc	a
-	ld (DrawNumber_3+1),hl
-	add	hl,bc
-	jp	c,DrawNumber_2
-DrawNumber_3:
-	ld	hl,$0000
-	call DrawChar
-	ret 
 
 ClearPlane012:
   call ClearPlane0
@@ -702,7 +856,7 @@ DrawSprite32x32_2:
   ld (hl),a
   inc de
   dec l
-; continue the loop by quad-rows
+; continue the loop by 8-rows
   dec b
   jp nz,DrawSprite32x32_2
   dec c
