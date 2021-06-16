@@ -19,9 +19,7 @@ Start:
   call DrawString
 
   call WaitAnyKey
-  call ClearPlane0
-  call ClearPlane1
-  call ClearPlane2
+  call ClearPlane012
   call SetPaletteGame
 
 InitGame:
@@ -31,6 +29,9 @@ InitGame:
 
 InitWaves:
   call InitWaveVars
+
+  call DrawShipLives	;TEST
+  call DrawPlayerScore	;TEST
 
 Start_1:
 ;  ld hl,12345
@@ -44,35 +45,23 @@ Start_1:
   add a,$30		; '0'
   call DrawChar
 
-;  ld hl,$A0FF
-;  ld (TextAddr),hl
-;  ld hl,54321
-;  call DrawNumber5
-
-;  ld hl,$A1F0
-;  ld (TextAddr),hl
-;  ld a,$40
-;  call DrawChar
-;  ld a,$40
-;  call DrawChar
-;  ld a,$40
-;  call DrawChar
-
-;  ld hl,$ABB0
-;  ld (TextAddr),hl
-;  ld hl,SGameOver
-;  call DrawString
-
   call ClearPlane0
 
-  ld b,2
+  ld hl,ShipXPos
+  call CalculateScreenAddr
+  ld de,RockB1S0
+  call DrawSprite32x32
+
+  ld b,10
 Start_A:
   push bc
+  ld hl,ShipXPos
+  call CalculateScreenAddr
   call Random16
   ld e,l
   ld a,h
-  and $0F
-  or  $E0
+  and $1F
+  or $E0
   ld h,a		; we have screen address
   ld a,e
   and $3F
@@ -110,14 +99,15 @@ SGameOver:  DEFM "GAME OVER",0
 AstroCodeBeg:
 
 NumPlayers:		db	0	; 0 = Not playing, 1 = In the Game
-PlayerScores:		db	0
+PlayerScore:		db	$34,$12	; Player score as two BCD bytes
 ShipsPerGame:		db	3
+PlayerShips:		db	3	; Current number of player ships
 ShpShotTimer:		db	0
 ShipDir:		db	0	; Ship direction
 ShipXAccel:		db	0
 ShipYAccel:		db	0
-ScrTimer:		db	0	; Countdown timer for saucer spawn.
-ScrTmrReload:		db	0	; Reload value for saucer timer.
+ScrTimer:		db	0	; Countdown timer for saucer spawn
+ScrTmrReload:		db	0	; Reload value for saucer timer
 AstPerWave:		db	2
 CurAsteroids:		db	0
 
@@ -161,8 +151,93 @@ InitShipsPerGame:
   xor a
   ld (ShipStatus),a
   ld (ShpShotTimer),a
-  ld (PlayerScores),a
+  ld (PlayerScore),a
+  ld (PlayerScore+1),a
   ld (CurAsteroids),a
+  ret
+
+; Calculate screen address and shift from the object coordinates
+;   HL = object address + 2, points to X pos word, next one is Y pos word
+; Returns:
+;   HL = screen address
+;   A = shift 0..7
+CalculateScreenAddr:
+; get X position
+  ld a,(hl)		; get X lo
+  inc hl
+  ld e,a
+  ld a,(hl)		; get X hi
+  ld d,a
+  ex de,hl		; now HL = X, DE = object addr + 3, A = X hi
+; calculate X * 1.5
+  or a			; clear carry flag
+  rra
+  ld b,a
+  ld a,e
+  rra
+  ld c,a		; now HL = X / 2
+  add hl,bc		; now HL = X * 1.5
+; divide X * 1.5 by 16
+  ld a,h
+  rra			; 1 hi
+  ld h,a
+  ld a,l
+  rra			; 1 lo
+  ld l,a
+  ld a,h
+  rra			; 2 hi
+  ld h,a
+  ld a,l
+  rra			; 2 lo
+  ld l,a
+  ld a,h
+  rra			; 3 hi
+  ld h,a
+  ld a,l
+  rra			; 3 lo
+  ld l,a
+  ld a,h
+  rra			; 4 hi
+  ld h,a
+  ld a,l
+  rra			; 4 lo; now A = 0..255 screen X pos
+  push af		; save A for the shift
+; divide A by 8
+  rra
+  rra
+  rra
+  and $1F		; now A = 0..31 screen column
+  push af		; save A screen column
+; get Y position
+  ex de,hl		; now HL = object addr + 3
+  inc hl
+  ld a,(hl)		; get Y lo
+  inc hl
+  ld e,a
+  ld a,(hl)		; get Y hi; we don't need HL value anymore
+; divide Y position by 8
+  rra			; 1 hi
+  ld h,a
+  ld a,l
+  rra			; 1 lo
+  ld l,a
+  ld a,h
+  rra			; 2 hi
+  ld h,a
+  ld a,l
+  rra			; 2 lo
+  ld l,a
+  ld a,h
+  rra			; 3 hi
+  ld h,a
+  ld a,l
+  rra			; 3 lo, now A = 0..255 screen Y pos
+; prepare results and return
+  ld l,a
+  pop af		; restore A screen column
+  or $E0		; plane start address, hi byte
+  ld h,a
+  pop af		; restore A shift
   ret
 
 UpdateObjects:
@@ -193,6 +268,60 @@ CenterShip:
   xor a
   ld (ShipXAccel),a
   ld (ShipYAccel),a
+  ret
+
+DrawPlayerScore:
+  ld hl,$A0FF		; screen address
+  ld (TextAddr),hl
+  ld hl,PlayerScore
+  call DrawNumberString
+  ret
+
+DrawShipLives:
+  ld a,(PlayerShips)
+  ld b,a		; now B = ships to draw
+  ld a,5		; max ships
+  sub b
+  ld c,a		; now C = spaces to draw
+  ld hl,$A1F0		; screen address
+  ld (TextAddr),hl
+DrawShipLives_1:
+  ld a,$40		; ship symbol
+  call DrawChar
+  dec b
+  jp nz,DrawShipLives_1
+DrawShipLives_2:
+  ld a,$20		; space char
+  call DrawChar
+  dec c
+  jp nz,DrawShipLives_2
+  ret
+
+; Draw BCD number as string "BBAA0", maximum is "99990"
+;   HL = BCD number address, two bytes: AA BB
+DrawNumberString:
+  inc hl		; go to higher byte "BB"
+  ld a,(hl)
+  call DrawNumberBcdByteString
+  dec hl		; go to lower byte "AA"
+  ld a,(hl)
+  call DrawNumberBcdByteString
+  ld a,$30
+  call DrawChar
+  ret
+DrawNumberBcdByteString:
+  ld c,a
+  rra
+  rra
+  rra
+  rra
+  and $0F
+  add a,$30
+  call DrawChar
+  ld a,c
+  and $0F
+  add a,$30
+  call DrawChar
   ret
 
 ;----------------------------------------------------------------------------
@@ -273,13 +402,11 @@ DrawString:
   jp DrawString
 
 ; Draw character on the screen using FontProto
-;   A = character to show: $00-$1F space with A width; $20 space
+;   A = character to show
 DrawChar:
   push hl
   push bc
-  cp $20        ; symbol $00-$1F ?
-  jp c,DrawChar_skip  ; yes => skip A positions
-  jp z,DrawChar_next  ; space char => jump
+;NOTE: Drawing a space char as a regular char to erase the place
 ; Calculate the symbol address
   sub $20       ; font starts from ' '
   ld e,a        ; calculating the symbol address
@@ -295,20 +422,29 @@ DrawChar:
   ex de,hl      ; now de=symbol addr
 DrawChar_3:
   ld hl,(TextAddr)
-  ld b,12       ; 12 lines
+  ld b,3        ; 3 * 4 = 12 lines
 DrawChar_4:     ; loop by lines
-  ld a,(de)
+  ld a,(de)	; 0
+  inc de
+  ld (hl),a     ; put on the screen
+  dec l		; one line lower
+  ld a,(de)	; 1
+  inc de
+  ld (hl),a     ; put on the screen
+  dec l		; one line lower
+  ld a,(de)	; 2
+  inc de
+  ld (hl),a     ; put on the screen
+  dec l		; one line lower
+  ld a,(de)	; 3
   inc de
   ld (hl),a     ; put on the screen
   dec l		; one line lower
   dec b
   jp nz,DrawChar_4
 DrawChar_next:
-  ld a,1
-DrawChar_skip:
   ld hl,TextAddr+1   ; address of upper byte
-  add a,(hl)
-  ld (hl),a     ; updating TextAddr
+  inc (hl)     ; increase column value
   pop bc
   pop hl
   ret
@@ -338,6 +474,9 @@ DrawNumber_3:
 	call DrawChar
 	ret 
 
+ClearPlane012:
+  call ClearPlane0
+  call ClearPlane1
 ClearPlane2:
   ld hl,$C000
   jp ClearPlane
@@ -400,7 +539,8 @@ Random16:
 Random16_seed1: dw 12345
 Random16_seed2: dw 54321
 
-GetRandomByte:
+; Get random number in A
+GetRandNum:
   push bc
   call Random16
   pop bc
@@ -411,97 +551,175 @@ GetRandomByte:
 ; Draw sprite 24x16 by XOR
 ;   HL = address on the screen
 ;   DE = sprite address
-;TODO: Check for out-of-screen by L
 DrawSprite24x16:
-  ld b,16		; 16 rows
+  ld a,h		; get column byte
+  and $E0		; 3 top bits
+  ld (DrawSprite24x16_3+1),a	; set the mutable parameter
+  ld c,3		; 3 columns
 DrawSprite24x16_1:
-  ld c,h		; save H
+  ld b,4		; 4 * 4 = 16 rows
+DrawSprite24x16_2:
   ld a,(de)		; 0
   xor (hl)
   ld (hl),a
   inc de
-  inc h
+  dec l
   ld a,(de)		; 1
   xor (hl)
   ld (hl),a
   inc de
-  inc h
+  dec l
   ld a,(de)		; 2
   xor (hl)
   ld (hl),a
   inc de
-  ld h,c		; restore H
-  dec l			; next line
-; Continue the loop
-  dec b
-  jp nz,DrawSprite24x16_1
-  ret
-
-; Draw sprite 24x16 by XOR reflected vertically
-;   HL = address on the screen
-;   DE = sprite address
-;TODO: Check for out-of-screen by L
-DrawSprite24x16R:
-  ld a,l
-  sub 15		; 15 lines lower
-  ld l,a
-  ld b,16		; 16 rows
-DrawSprite24x16R_1:
-  ld c,h		; save H
-  ld a,(de)		; 0
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc h
-  ld a,(de)		; 1
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc h
-  ld a,(de)		; 2
-  xor (hl)
-  ld (hl),a
-  inc de
-  ld h,c		; restore H
-  inc l			; next line, going up
-; Continue the loop
-  dec b
-  jp nz,DrawSprite24x16R_1
-  ret
-
-; Draw sprite 32x32 by XOR
-;   HL = address on the screen
-;   DE = sprite address
-;TODO: Check for out-of-screen by L
-DrawSprite32x32:
-  ld b,32		; 32 rows
-DrawSprite32x32_1:
-  ld c,h		; save H
-  ld a,(de)		; 0
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc h
-  ld a,(de)		; 1
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc h
-  ld a,(de)		; 2
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc h
+  dec l
   ld a,(de)		; 3
   xor (hl)
   ld (hl),a
   inc de
-  ld h,c		; restore H
-  dec l			; next line
-; Continue the loop
+  dec l
+; continue the loop by quad-rows
   dec b
-  jp nz,DrawSprite32x32_1
-  ret
+  jp nz,DrawSprite24x16_2
+  dec c
+  ret z			; was last column => return
+; back to the top row
+  ld a,l
+  add a,16
+  ld l,a		; restore row L
+; next column
+  ld a,h
+  inc a
+  and $1F		; keep 0..31 column value
+DrawSprite24x16_3:
+  or $A0		; this parameter is mutable
+  ld h,a
+; continue the loop by columns
+  jp DrawSprite24x16_1
+
+; Draw sprite 24x16 by XOR reflected vertically
+;   HL = address on the screen
+;   DE = sprite address
+DrawSprite24x16R:
+  ld a,h		; get column byte
+  and $E0		; 3 top bits
+  ld (DrawSprite24x16R_3+1),a	; set the mutable parameter
+  ld a,l
+  sub 15		; 15 lines lower
+  ld l,a
+  ld c,3		; 3 columns
+DrawSprite24x16R_1:
+  ld b,4		; 4 * 4 = 16 rows
+DrawSprite24x16R_2:
+  ld a,(de)		; 0
+  xor (hl)
+  ld (hl),a
+  inc de
+  inc l
+  ld a,(de)		; 1
+  xor (hl)
+  ld (hl),a
+  inc de
+  inc l
+  ld a,(de)		; 2
+  xor (hl)
+  ld (hl),a
+  inc de
+  inc l
+  ld a,(de)		; 3
+  xor (hl)
+  ld (hl),a
+  inc de
+  inc l
+; continue the loop by quad-rows
+  dec b
+  jp nz,DrawSprite24x16R_2
+  dec c
+  ret z			; was last column => return
+; back to the bottom row
+  ld a,l
+  sub 16
+  ld l,a		; restore row L
+; next column
+  ld a,h
+  inc a
+  and $1F		; keep 0..31 column value
+DrawSprite24x16R_3:
+  or $A0		; this parameter is mutable
+  ld h,a
+; continue the loop by columns
+  jp DrawSprite24x16R_1
+
+; Draw sprite 32x32 by XOR
+;   HL = address on the screen
+;   DE = sprite address
+DrawSprite32x32:
+  ld a,h		; get column byte
+  and $E0		; 3 top bits
+  ld (DrawSprite32x32_3+1),a	; set the mutable parameter
+  ld c,4		; 3 columns
+DrawSprite32x32_1:
+  ld b,4		; 4 * 8 = 32 rows
+DrawSprite32x32_2:
+  ld a,(de)		; 0
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 1
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 2
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 3
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 4
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 5
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 6
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  ld a,(de)		; 7
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+; continue the loop by quad-rows
+  dec b
+  jp nz,DrawSprite32x32_2
+  dec c
+  ret z			; was last column => return
+; back to the top row
+  ld a,l
+  add a,32
+  ld l,a		; restore row L
+; next column
+  ld a,h
+  inc a
+  and $1F		; keep 0..31 column value
+DrawSprite32x32_3:
+  or $A0		; this parameter is mutable
+  ld h,a
+; continue the loop by columns
+  jp DrawSprite32x32_1
 
 ;----------------------------------------------------------------------------
 AstroCodeEnd:

@@ -139,9 +139,9 @@ namespace SpriteRotate
         static byte[] PrepareSpriteArray(Bitmap bmp, int x, int y, int cols, int rows)
         {
             var octets = new byte[cols * rows];
-            for (int row = 0; row < rows; row++)
+            for (int col = 0; col < cols; col++)
             {
-                for (int col = 0; col < cols; col++)
+                for (int row = 0; row < rows; row++)
                 {
                     int val = 0;
                     for (int b = 0; b < 8; b++)
@@ -151,7 +151,7 @@ namespace SpriteRotate
                         val |= (v << (7 - b));
                     }
 
-                    octets[row * cols + col] = (byte)val;
+                    octets[col * rows + row] = (byte)val;
                 }
             }
 
@@ -191,26 +191,23 @@ namespace SpriteRotate
             WriteByteArray(octets, writer);
         }
 
-        static void ShiftByteArray(byte[] octets, int cols)
+        static void ShiftByteArray(byte[] octets, int cols, int rows)
         {
-            int count = 0;
-            bool carry = false;
-            for (int i = 0; i < octets.Length; i++)
+            for (int r = 0; r < rows; r++)
             {
-                byte b = octets[i];
-                bool newcarry = (b & 1) != 0;
-                b = (byte)(b >> 1);
-                if (carry) b = (byte)(b | 0x80);
-                octets[i] = b;
-
-                count++;
-                if (count == cols)
+                bool carry = false;
+                for (int c = 0; c < cols; c++)
                 {
-                    count = 0;
-                    newcarry = false;
-                }
+                    int index = c * rows + r;
 
-                carry = newcarry;
+                    byte b = octets[index];
+                    bool newcarry = (b & 1) != 0;
+                    b = (byte) (b >> 1);
+                    if (carry) b = (byte) (b | 0x80);
+                    octets[index] = b;
+
+                    carry = newcarry;
+                }
             }
         }
 
@@ -223,7 +220,7 @@ namespace SpriteRotate
 
             for (int j = 1; j < 8; j++)
             {
-                ShiftByteArray(octets, cols);
+                ShiftByteArray(octets, cols, rows);
                 writer.WriteLine($"{name}S{j}:");
                 WriteByteArray(octets, writer);
             }
