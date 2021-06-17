@@ -98,14 +98,32 @@ InitWaves:
   ld (AstObjects+72+4),hl  ;TEST: set the rock Y
   ld a,1
   ld (ShipShotObjects+0),a  ;TEST: activate the bullet
-  ld hl,1400
-  ld (ShipShotObjects+0+2),hl  ;TEST: set the bullet X
-  ld (ShipShotObjects+0+4),hl  ;TEST: set the bullet Y
+  ld a,20
+  ld (ShipShotObjects+0+6),a  ;TEST: set the bullet dX
+  ld (ShipShotObjects+0+7),a  ;TEST: set the bullet dY
   ld a,1
   ld (ShipShotObjects+8),a  ;TEST: activate the bullet
+  ld hl,1366
+  ld (ShipShotObjects+8+2),hl  ;TEST: set the bullet X
+  ld (ShipShotObjects+8+4),hl  ;TEST: set the bullet Y
   ld a,20
-  ld (ShipShotObjects+8+6),a  ;TEST: set the rock dX
-  ld (ShipShotObjects+8+7),a  ;TEST: set the rock dY
+  ld (ShipShotObjects+8+7),a  ;TEST: set the bullet dY
+  ld a,1
+  ld (ShipShotObjects+16),a  ;TEST: activate the bullet
+  ld hl,1366
+  ld (ShipShotObjects+16+2),hl  ;TEST: set the bullet X
+  ld hl,1200
+  ld (ShipShotObjects+16+4),hl  ;TEST: set the bullet Y
+  ld a,20
+  ld (ShipShotObjects+16+7),a  ;TEST: set the bullet dY
+  ld a,1
+  ld (ShipShotObjects+24),a  ;TEST: activate the bullet
+  ld hl,1366
+  ld (ShipShotObjects+24+2),hl  ;TEST: set the bullet X
+  ld hl,1600
+  ld (ShipShotObjects+24+4),hl  ;TEST: set the bullet Y
+  ld a,20
+  ld (ShipShotObjects+24+7),a  ;TEST: set the bullet dY
 
 Start_1:
 ;  ld hl,12345
@@ -113,11 +131,15 @@ Start_1:
 ;  ld hl,54321
 ;  ld (Random16_seed2),hl
 
+;  di
   ld hl,$BFFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
   add a,$30		; '0'
   call DrawChar		; show frame count
+
+  call ReadKeyboard
+  ;TODO: process keyboard
 
   call UpdateObjects
 
@@ -129,6 +151,7 @@ Start_1:
   ld (LastIntCount),a
   xor a
   ld (IntCount),a
+;  ei
   halt
   jp Start_1
 
@@ -164,7 +187,7 @@ Objects:		; Total 32 object records
 ; Ship object record
 ShipStatus:		db	0	; 0=No Ship Or In Hyperspace, 1=Alive, $A0-FF=Ship Exploding
 			db	0	; Type = Ship
-ShipXPos:		dw	1365
+ShipXPos:		dw	1366
 ShipYPos:		dw	1024
 ShipXSpeed:		db	0
 ShipYSpeed:		db	0
@@ -281,8 +304,10 @@ DrawProcTable:
   dw DrawBulletProc	; 3
 
 DrawShipProc:
+;TODO: Use Status bits to get proper sprite
+  ld hl,Ship08S0	; base sprite address
+  call Multiply48	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address
-  ld de,Ship08S0
   call DrawSprite24x16
 ;TODO
   ret
@@ -311,6 +336,26 @@ DrawBulletProc:
   ld (hl),a
 ;TODO
   ret
+
+; Multiply A by 48; A = 0..7 by 48, HL = base address
+; Result: HL = base address + A * 48
+Multiply48:
+  push hl		; store base address
+  and 7
+  add a,a
+  ld c,a
+  ld b,0
+  ld hl,TableMul48
+  add hl,bc		; now HL = address in the table
+  ld a,(hl)		; get lo
+  inc hl
+  ld h,(hl)		; get hi
+  ld l,a		; now HL = A * 48
+  pop bc		; restore base address
+  add hl,bc
+  ret
+TableMul48:
+	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
 
 ; Multiply A by 128; A = 0..7 by 128, HL = base address
 ; Result: HL = base address + A * 128
@@ -486,7 +531,7 @@ InitWaveVars:
 
 ; Center Ship On Screen
 CenterShip:
-  ld hl,1365
+  ld hl,1366
   ld (ShipXPos),hl
   ld hl,1024
   ld (ShipYPos),hl
@@ -570,10 +615,10 @@ WaitKeyUp:
   ret
 
 ; Returns: A=key code, $00 no key; Z=0 for key, Z=1 for no key
-; Key codes: Fire=$01, Left=$02, Right=$04, Hyper=$08
+; Key codes: Fire=$01, Left=$02, Right=$04, Thrust=$08, Hyper=$10, Enter/Esc=$20
 ReadKeyboard:
   ld hl,ReadKeyboard_map  ; Point HL at the keyboard list
-  ld b,6                  ; number of rows to check
+  ld b,2                  ; number of rows to check
 ReadKeyboard_0:        
   ld e,(hl)               ; get address low
   inc hl
@@ -595,21 +640,13 @@ ReadKeyboard_2:
   ld a,(hl)               ; We've found a key, fetch the character code
   or a
   ret
-; Mapping: Arrows; US/Space - look/shoot, Tab/RusLat - switch look/shoot,
-;          AR2/ZB/PS - escape, I/M - inventory; P/R - menu, Enter=Enter
+; Mapping: Arrows Left/Right - rotate the ship, Up - thrust,
+;          US/SS/RusLat/ZB - fire, Tab - hyper
 ReadKeyboard_map:
   DW KeyLineEx
-  DB $08,$00,$05,$00,$00,$00,$00,$00  ; R/L SS  US
+  DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US
   DW KeyLine0
-  DB $01,$03,$04,$02,$07,$09,$07,$08  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
-  DW KeyLine1
-  DB $00,$00,$00,$00,$00,$07,$00,$00  ; F5  F4  F3  F2  F1  AR2 Str  ^\
-  DW KeyLine5
-  DB $00,$00,$06,$00,$00,$00,$06,$00  ;  O   N   M   L   K   J   I   H
-  DW KeyLine6
-  DB $00,$00,$00,$00,$00,$0F,$00,$0F  ;  W   V   U   T   S   R   Q   P
-  DW KeyLine7
-  DB $01,$00,$00,$00,$00,$00,$00,$00  ; Spc  ^   ]   \   [   Z   Y   X
+  DB $00,$04,$00,$02,$01,$20,$20,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
 
 TextAddr:  DW  $A0FF  ; Address on the screen to draw next char
 
@@ -646,26 +683,12 @@ DrawChar:
   ex de,hl      ; now de=symbol addr
 DrawChar_3:
   ld hl,(TextAddr)
-  ld b,3        ; 3 * 4 = 12 lines
-DrawChar_4:     ; loop by lines
+REPT 12
   ld a,(de)	; 0
   inc de
   ld (hl),a     ; put on the screen
   dec l		; one line lower
-  ld a,(de)	; 1
-  inc de
-  ld (hl),a     ; put on the screen
-  dec l		; one line lower
-  ld a,(de)	; 2
-  inc de
-  ld (hl),a     ; put on the screen
-  dec l		; one line lower
-  ld a,(de)	; 3
-  inc de
-  ld (hl),a     ; put on the screen
-  dec l		; one line lower
-  dec b
-  jp nz,DrawChar_4
+ENDM
 DrawChar_next:
   ld hl,TextAddr+1   ; address of upper byte
   inc (hl)     ; increase column value
@@ -756,31 +779,13 @@ DrawSprite24x16:
   ld (DrawSprite24x16_3+1),a	; set the mutable parameter
   ld c,3		; 3 columns
 DrawSprite24x16_1:
-  ld b,4		; 4 * 4 = 16 rows
-DrawSprite24x16_2:
-  ld a,(de)		; 0
+REPT 16
+  ld a,(de)
   xor (hl)
   ld (hl),a
   inc de
   dec l
-  ld a,(de)		; 1
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 2
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 3
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-; continue the loop by quad-rows
-  dec b
-  jp nz,DrawSprite24x16_2
+ENDM
   dec c
   ret z			; was last column => return
 ; back to the top row
@@ -809,31 +814,13 @@ DrawSprite24x16R:
   ld l,a
   ld c,3		; 3 columns
 DrawSprite24x16R_1:
-  ld b,4		; 4 * 4 = 16 rows
-DrawSprite24x16R_2:
-  ld a,(de)		; 0
+REPT 16
+  ld a,(de)
   xor (hl)
   ld (hl),a
   inc de
   inc l
-  ld a,(de)		; 1
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc l
-  ld a,(de)		; 2
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc l
-  ld a,(de)		; 3
-  xor (hl)
-  ld (hl),a
-  inc de
-  inc l
-; continue the loop by quad-rows
-  dec b
-  jp nz,DrawSprite24x16R_2
+ENDM
   dec c
   ret z			; was last column => return
 ; back to the bottom row
@@ -859,51 +846,13 @@ DrawSprite32x32:
   ld (DrawSprite32x32_3+1),a	; set the mutable parameter
   ld c,4		; 3 columns
 DrawSprite32x32_1:
-  ld b,4		; 4 * 8 = 32 rows
-DrawSprite32x32_2:
-  ld a,(de)		; 0
+REPT 32
+  ld a,(de)
   xor (hl)
   ld (hl),a
   inc de
   dec l
-  ld a,(de)		; 1
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 2
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 3
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 4
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 5
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 6
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-  ld a,(de)		; 7
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-; continue the loop by 8-rows
-  dec b
-  jp nz,DrawSprite32x32_2
+ENDM
   dec c
   ret z			; was last column => return
 ; back to the top row
@@ -925,8 +874,10 @@ AstroCodeEnd:
 
 INCLUDE "astrofont.asm"
 
+AstroSpriteBeg:
 INCLUDE "astrosprs.asm"
 ShotSprite:	db	$80,$40,$20,$10,$08,$04,$02,$01
+AstroSpriteEnd:
 
   ORG $A000
 INCLUDE "astrotscr.asm"

@@ -3,8 +3,8 @@
 
 Start	.equ	280h
 
-	.EXPORT KeyLineEx, KeyLine0, KeyLine1, KeyLine5, KeyLine6, KeyLine7
-	.EXPORT BorderColor, IntCount, SetPaletteGame
+	.EXPORT KeyLineEx, KeyLine0
+	.EXPORT IntCount, SetPaletteGame
 
 ;----------------------------------------------------------------------------
 
@@ -23,6 +23,8 @@ Start	.equ	280h
 	lxi	h,KEYINT
 	shld	38h+1
 
+;TODO: Decompress the screen
+
 ; ; Move encoded block from Start to A000h
 ; 	xra	a
 ; 	lxi	d,Start		; source addr
@@ -40,16 +42,6 @@ Start	.equ	280h
 ; 	lxi	h,0A000h
 ; 	lxi	d,Start
 ; 	call	unlzsa1
-
-; Clear memory from A000h to FFFFh
-;	xra	a
-;	lxi	b,0A000h	; destination addr
-;Init_2:
-;	stax	b
-;	inr	c
-;	jnz	Init_2
-;	inr	b
-;	jnz	Init_2
 
 	call	SetPaletteTitle
 
@@ -103,22 +95,6 @@ KEYINT:
 	out	3
 	in	2
 	sta	KeyLine0
-	mvi	a, 0FDh
-	out	3
-	in	2
-	sta	KeyLine1
-	mvi	a, 0DFh
-	out	3
-	in	2
-	sta	KeyLine5
-	mvi	a, 0BFh
-	out	3
-	in	2
-	sta	KeyLine6
-	mvi	a, 07Fh
-	out	3
-	in	2
-	sta	KeyLine7
 ; Scrolling, screen mode, border
 	mvi	a, 88h
 	out	0
@@ -126,8 +102,7 @@ KEYINT:
 	out	1
 	mvi	a, $FF
 	out	3		; scrolling
-	lda	BorderColor
-	ani	0Fh
+	xra	a
 	out	2		; screen mode and border
 ;
 	lda	IntCount
@@ -140,12 +115,7 @@ KEYINT:
 
 KeyLineEx:	.db 11111111b
 KeyLine0:	.db 11111111b
-KeyLine1:	.db 11111111b
-KeyLine5:	.db 11111111b
-KeyLine6:	.db 11111111b
-KeyLine7:	.db 11111111b
 
-BorderColor:	.db 0		; border color number 0..15
 IntCount:	.db 0		; interrupt counter
 
 ;----------------------------------------------------------------------------
