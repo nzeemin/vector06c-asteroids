@@ -46,7 +46,7 @@ InitWaves:
   ld (AstObjects+8),a	;TEST: activate the rock
   ld hl,100
   ld (AstObjects+8+2),hl  ;TEST: set the rock X
-  ld hl,900
+  ld hl,1600
   ld (AstObjects+8+4),hl  ;TEST: set the rock Y
   ld a,10
   ld (AstObjects+8+6),a  ;TEST: set the rock dX
@@ -74,6 +74,38 @@ InitWaves:
   ld a,5
   ld (AstObjects+40+6),a  ;TEST: set the rock dX
   ld (AstObjects+40+7),a  ;TEST: set the rock dY
+  ld a,1
+  ld (AstObjects+48),a	;TEST: activate the rock
+  ld hl,1200
+  ld (AstObjects+48+2),hl  ;TEST: set the rock X
+  ld hl,200
+  ld (AstObjects+48+4),hl  ;TEST: set the rock Y
+  ld a,1
+  ld (AstObjects+56),a	;TEST: activate the rock
+  ld hl,600
+  ld (AstObjects+56+2),hl  ;TEST: set the rock X
+  ld a,1
+  ld (AstObjects+64),a	;TEST: activate the rock
+  ld hl,2400
+  ld (AstObjects+64+2),hl  ;TEST: set the rock X
+  ld hl,1400
+  ld (AstObjects+64+4),hl  ;TEST: set the rock Y
+  ld a,1
+  ld (AstObjects+72),a	;TEST: activate the rock
+  ld hl,2200
+  ld (AstObjects+72+2),hl  ;TEST: set the rock X
+  ld hl,400
+  ld (AstObjects+72+4),hl  ;TEST: set the rock Y
+  ld a,1
+  ld (ShipShotObjects+0),a  ;TEST: activate the bullet
+  ld hl,1400
+  ld (ShipShotObjects+0+2),hl  ;TEST: set the bullet X
+  ld (ShipShotObjects+0+4),hl  ;TEST: set the bullet Y
+  ld a,1
+  ld (ShipShotObjects+8),a  ;TEST: activate the bullet
+  ld a,20
+  ld (ShipShotObjects+8+6),a  ;TEST: set the rock dX
+  ld (ShipShotObjects+8+7),a  ;TEST: set the rock dY
 
 Start_1:
 ;  ld hl,12345
@@ -102,7 +134,7 @@ Start_1:
 
 LastIntCount: db 0
 String:  DEFM " ORIGINAL GAME 1979 ATARI INC",0
-String2: DEFM "VECTOR-06C DEMO VERSION NZEEMIN",0
+String2: DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0
 SGameOver:  DEFM "GAME OVER",0
 
 ;----------------------------------------------------------------------------
@@ -171,9 +203,13 @@ AstObjects:		db	0, 2, 0,0,0,0, 0,0
 			db	0, 2, 0,0,0,0, 0,0
 			db	0, 2, 0,0,0,0, 0,0
 ; Ship bullet objects, 4 records
-ShipShotObjects:	ds 8 * 4
+ShipShotObjects:	db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
 ; Soucer bullet objects, 2 records
-ScrShotObjects:		ds 8 * 2
+ScrShotObjects:		db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
 
 
 ;----------------------------------------------------------------------------
@@ -264,6 +300,15 @@ DrawRockProc:
   ret
 
 DrawBulletProc:
+  and 7
+  ld c,a		; shift 0..7
+  ld b,0
+  ld hl,ShotSprite	; base sprite address
+  add hl,bc
+  ld a,(hl)		; bullet sprite byte
+  ex de,hl		; now HL = screen address
+  xor (hl)
+  ld (hl),a
 ;TODO
   ret
 
@@ -881,6 +926,7 @@ AstroCodeEnd:
 INCLUDE "astrofont.asm"
 
 INCLUDE "astrosprs.asm"
+ShotSprite:	db	$80,$40,$20,$10,$08,$04,$02,$01
 
   ORG $A000
 INCLUDE "astrotscr.asm"
