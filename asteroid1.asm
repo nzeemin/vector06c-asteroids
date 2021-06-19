@@ -498,20 +498,19 @@ TableMul384:
 ;   A = shift 0..7
 CalculateScreenAddr:
 ; get X position
-  ld a,(hl)		; get X lo
-  inc hl
-  ld e,a
-  ld a,(hl)		; get X hi
-  ld d,a
-  ex de,hl		; now HL = X, DE = object addr + 3, A = X hi
-; calculate X * 1.5
+  ld e,(hl)		; get X lo
+  inc hl		; now HL = object record + 3, at X hi
+  ld d,(hl)		; get X hi
+  ex de,hl		; now HL = X, DE = object addr + 3
+; calculate X * 1.5, as X + X / 2
+  ld a,h
   or a			; clear carry flag
   rra
   ld b,a
-  ld a,e
+  ld a,l
   rra
-  ld c,a		; now HL = X / 2
-  add hl,bc		; now HL = X * 1.5
+  ld c,a		; now BC = X / 2
+  add hl,bc		; now HL = X + X / 2
 ; divide X * 1.5 by 16
   ld a,h
   rra			; 1 hi
@@ -544,10 +543,10 @@ CalculateScreenAddr:
   and $1F		; now A = 0..31 screen column
   push af		; save A screen column
 ; get Y position
-  ex de,hl		; now HL = object addr + 3
-  inc hl
+  ex de,hl		; now HL = object record + 3
+  inc hl		; now HL = object record + 4, at Y lo
   ld e,(hl)		; get Y lo
-  inc hl
+  inc hl		; now HL = object record + 5, at Y hi
   ld a,(hl)		; get Y hi; we don't need HL value anymore
 ; divide Y position by 8
   rra			; 1 hi
@@ -607,7 +606,22 @@ UpdateObjects_X1:
   ld e,(hl)		; now DE = X position
   ex de,hl		; now HL = X position, DE = object address + 2
   add hl,bc		; X = X + SpeedX
-;TODO: check for upper bound, wrap
+; check for upper bound, wrap on $0AAB = 2731
+  ld a,h
+  cp $0A		; check hi byte
+  jp c,UpdateObjects_X3	; less than $0A00, no need to wrap => skip
+  jp nz,UpdateObjects_X2  ; $AB00 or more, need to wrap => go wrap
+  ld a,l		; for $0AXX need to check lo byte
+  cp $AB
+  jp c,UpdateObjects_X3	; less than $0AAB, no need to wrap => skip
+UpdateObjects_X2:	; wrap by X
+  ld a,l
+  sub $AB		; subtract lo
+  ld l,a
+  ld a,h
+  sbc a,$0A		; subtract hi
+  ld h,a
+UpdateObjects_X3:
   ex de,hl		; now DE = new X position, HL = object address + 2, at X lo
   ld (hl),e		; save X lo
   inc hl		; now HL = object address + 3, at X hi
