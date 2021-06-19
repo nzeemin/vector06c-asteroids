@@ -117,14 +117,16 @@ InitWaves:
   ld a,20
   ld (ShipShotObjects+16+7),a  ;TEST: set the bullet dY
   ld a,1
-  ld (ShipShotObjects+24),a  ;TEST: activate the bullet
-  ld hl,1366
-  ld (ShipShotObjects+24+2),hl  ;TEST: set the bullet X
-  ld hl,1600
-  ld (ShipShotObjects+24+4),hl  ;TEST: set the bullet Y
-  ld a,20
-  ld (ShipShotObjects+24+7),a  ;TEST: set the bullet dY
+  ld (ShipDebrisObjects+0),a  ;TEST: activate the debris
+  ld hl,1200
+  ld (ShipDebrisObjects+0+2),hl  ;TEST: set the debris X
+  ld (ShipDebrisObjects+0+4),hl  ;TEST: set the debris Y
+  ld a,-8
+  ld (ShipDebrisObjects+0+6),a  ;TEST: set the debris dX
+  ld a,8
+  ld (ShipDebrisObjects+0+7),a  ;TEST: set the debris dY
 
+; Game loop start
 Start_1:
 ;  ld hl,12345
 ;  ld (Random16_seed1),hl
@@ -138,8 +140,14 @@ Start_1:
   add a,$30		; '0'
   call DrawChar		; show frame count
 
+;  ld hl,$BDFF
+;  ld (TextAddr),hl
+;  ld a,(ThrustSw)
+;  add a,$30		; '0'
+;  call DrawChar		; show ThrustSw
+
   call ReadKeyboard
-  ;TODO: process keyboard
+  call ProcessKeyboard
 
   call UpdateObjects
 
@@ -151,9 +159,41 @@ Start_1:
   ld (LastIntCount),a
   xor a
   ld (IntCount),a
-;  ei
+  ei
   halt
-  jp Start_1
+  jp Start_1		; continue the game loop
+
+ProcessKeyboard:
+  rra			; bit 0 - if Fire pressed
+;TODO: process Fire
+  rra			; bit 1 - if Left pressed
+  jp nc,ProcessKeyboard_1
+  ld c,a
+  ld a,(ShipDir)
+  dec a
+  and $1F
+  ld (ShipDir),a
+  ld a,c
+ProcessKeyboard_1:
+  rra			; bit 2 - if Right pressed
+  jp nc,ProcessKeyboard_2
+  ld c,a
+  ld a,(ShipDir)
+  inc a
+  and $1F
+  ld (ShipDir),a
+  ld a,c
+ProcessKeyboard_2:
+  ld c,a
+  and 1			; bit 3 - if Thrust pressed
+  ld (ThrustSw),a
+  ld a,c
+  and 2			; bit 4 - if Hyper pressed
+  ld (HyprSpcSw),a
+  ld a,c
+  and 4			; bit 5 - if Enter/Esc pressed
+;TODO
+  ret
 
 LastIntCount: db 0
 String:  DEFM " ORIGINAL GAME 1979 ATARI INC",0
@@ -163,12 +203,15 @@ SGameOver:  DEFM "GAME OVER",0
 ;----------------------------------------------------------------------------
 AstroCodeBeg:
 
+ThrustSw:		db	0
+HyprSpcSw:		db	0
+
 NumPlayers:		db	0	; 0 = Not playing, 1 = In the Game
 PlayerScore:		db	$34,$12	; Player score as two BCD bytes
 ShipsPerGame:		db	3
 PlayerShips:		db	3	; Current number of player ships
 ShpShotTimer:		db	0
-ShipDir:		db	0	; Ship direction
+ShipDir:		db	8	; Ship direction
 ShipXAccel:		db	0
 ShipYAccel:		db	0
 ScrTimer:		db	0	; Countdown timer for saucer spawn
@@ -183,7 +226,7 @@ CurAsteroids:		db	0
 ; +04-05:   Y position
 ; +06:      X speed
 ; +07:      Y speed
-Objects:		; Total 32 object records
+Objects:		; Total 38 object records
 ; Ship object record
 ShipStatus:		db	0	; 0=No Ship Or In Hyperspace, 1=Alive, $A0-FF=Ship Exploding
 			db	0	; Type = Ship
@@ -233,6 +276,11 @@ ShipShotObjects:	db	0, 3, 0,0,0,0, 0,0
 ; Soucer bullet objects, 2 records
 ScrShotObjects:		db	0, 3, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
+; Ship debris objects, 4 records
+ShipDebrisObjects:	db	0, 4, 0,0,0,0, 0,0
+			db	0, 4, 0,0,0,0, 0,0
+			db	0, 4, 0,0,0,0, 0,0
+			db	0, 4, 0,0,0,0, 0,0
 
 
 ;----------------------------------------------------------------------------
@@ -251,7 +299,7 @@ InitShipsPerGame:
   ret
 
 DrawObjects:
-  ld b,32		; number of objects
+  ld b,38		; number of objects
   ld hl,Objects
 DrawObjects_1:
   ld a,(hl)		; get status byte
@@ -269,7 +317,7 @@ DrawObjects_1:
   ld (DrawObjects_2+1),a  ; store the shift
 ; calculate draw procedure address
   pop af		; restore object type
-  and 3			; 0..3
+  and 7			; 0..7
   add a,a
   ld c,a
   ld b,0
@@ -294,7 +342,8 @@ DrawObjects_next:
   ld de,$0008		; record size
   add hl,de		; next object record
   dec b
-  jp nz,DrawObjects_1
+  jp nz,DrawObjects_1	; continue the loop by objects
+DrawNullProc:		; call point for a void draw procedure
   ret
 
 DrawProcTable:
@@ -302,14 +351,58 @@ DrawProcTable:
   dw DrawSauserProc	; 1
   dw DrawRockProc	; 2
   dw DrawBulletProc	; 3
+  dw DrawDebrisProc	; 4
+  dw DrawNullProc	; 5
+  dw DrawNullProc	; 6
+  dw DrawNullProc	; 7
 
 DrawShipProc:
-;TODO: Use Status bits to get proper sprite
-  ld hl,Ship08S0	; base sprite address
+  push af		; save A = shoft 0..7
+  ld a,(ShipDir)	; get ship direction
+  and $1F		; 0..31
+  cp 16			; 0..15 or 16..31 ?
+  ld hl,DrawShipSprite	; draw sprite up-to-down
+  jp c,DrawShipProc_2	; ShipDir = 0..15 => jump
+; ShipDir = 16..31
+  ld c,a
+  ld a,32
+  sub c			; A = 16..1
+  ld hl,DrawShipSpriteR	; draw sprite down-to-up
+DrawShipProc_2:
+  ld (DrawShipProc_4+1),hl  ; put draw sprite call address
+; Calculate sprite address, A = 0..16
+  add a,a
+  ld l,a
+  ld h,0
+  ld bc,TableMul384
+  add hl,bc
+  ld a,(hl)		; lo byte
+  inc hl
+  ld h,(hl)		; hi byte
+  ld l,a
+  ld bc,Ship00S0	; base sprite address
+  add hl,bc		; now HL = base sprite address for the ship direction
+; Chech the Thrust status, adjust the sprite if needed
+  ld a,(ThrustSw)	; get Thrust button status
+  or a
+  jp z,DrawShipProc_3
+  ld bc,384*17		; shift from Ship sprite to Ship+Fire sprite
+  add hl,bc
+DrawShipProc_3:
+  pop af		; restore shift A = 0..7
   call Multiply48	; calculate sprite address based on shift A = 0..7
-  ex de,hl		; now HL = screen address
-  call DrawSprite24x16
-;TODO
+  ex de,hl		; now HL = screen address, DE = sprite address
+DrawShipProc_4:
+  call DrawShipSprite
+  ret
+
+DrawDebrisProc:
+;TODO: use shift A
+  ld hl,Debris1S0	; base sprite address
+  call Multiply16
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite16x8
+;TODO: use Debris1/Debris2, use reflections
   ret
 
 DrawSauserProc:
@@ -317,6 +410,7 @@ DrawSauserProc:
   ret
 
 DrawRockProc:
+;TODO: small rocks, medium rocks
   ld hl,RockB1S0	; base sprite address
   call Multiply128	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
@@ -337,7 +431,20 @@ DrawBulletProc:
 ;TODO
   ret
 
-; Multiply A by 48; A = 0..7 by 48, HL = base address
+; Multiply A by 16; A = 0..7, HL = base address
+; Result: HL = base address + A * 16
+Multiply16:
+  and 7
+  add a,a
+  add a,a
+  add a,a
+  add a,a
+  ld c,a
+  ld b,0
+  add hl,bc
+  ret
+
+; Multiply A by 48; A = 0..7, HL = base address
 ; Result: HL = base address + A * 48
 Multiply48:
   push hl		; store base address
@@ -354,10 +461,8 @@ Multiply48:
   pop bc		; restore base address
   add hl,bc
   ret
-TableMul48:
-	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
 
-; Multiply A by 128; A = 0..7 by 128, HL = base address
+; Multiply A by 128; A = 0..7, HL = base address
 ; Result: HL = base address + A * 128
 Multiply128:
   push hl		; store base address
@@ -374,8 +479,16 @@ Multiply128:
   pop bc		; restore base address
   add hl,bc
   ret
+
+TableMul48:
+	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
 TableMul128:
 	dw	0, 128, 128*2, 128*3, 128*4, 128*5, 128*6, 128*7
+TableMul384:
+	dw	0, 384, 384*2, 384*3, 384*4, 384*5, 384*6, 384*7
+	dw	384*8, 384*9, 384*10, 384*11, 384*12, 384*13, 384*14, 384*15
+	dw	384*16, 384*17, 384*18, 384*19, 384*20, 384*21, 384*22, 384*23
+	dw	384*24, 384*25, 384*26, 384*27, 384*28, 384*29, 384*30, 384*31
 
 
 ; Calculate screen address and shift from the object coordinates
@@ -462,7 +575,7 @@ CalculateScreenAddr:
   ret
 
 UpdateObjects:
-  ld b,32		; number of objects
+  ld b,38		; number of objects
   ld hl,Objects
 UpdateObjects_1:
   ld a,(hl)		; get status byte
@@ -479,16 +592,26 @@ UpdateObjects_1:
 ; update X
   ld a,(hl)		; get X speed
   or a
-  jp z,UpdateObjects_skipX
+  jp z,UpdateObjects_skipX  ; zero SpeedX => skip
+  ld b,0		; B will be hi byte for speed - sign extension
+  jp p,UpdateObjects_X1	; skip if positive
+  ld b,$FF		; sign extension
+UpdateObjects_X1:
+  ld c,a		; now BC = SpeedX
   push hl		; store HL = object address + 6
   dec hl
   dec hl
-  dec hl
+  dec hl		; now HL = object address + 3, at X hi
+  ld d,(hl)
   dec hl		; now HL = object address + 2, at X lo
-;TODO: A could be positive or negative
-  add a,(hl)
-  ld (hl),a
-;
+  ld e,(hl)		; now DE = X position
+  ex de,hl		; now HL = X position, DE = object address + 2
+  add hl,bc		; X = X + SpeedX
+;TODO: check for upper bound, wrap
+  ex de,hl		; now DE = new X position, HL = object address + 2, at X lo
+  ld (hl),e		; save X lo
+  inc hl		; now HL = object address + 3, at X hi
+  ld (hl),d		; save X hi
   pop hl		; restore HL = object address + 6
 UpdateObjects_skipX:
 ; update Y
@@ -496,12 +619,26 @@ UpdateObjects_skipX:
   ld a,(hl)		; get Y speed
   or a
   jp z,UpdateObjects_skipY
+  ld b,0		; B will be hi byte for speed - sign extension
+  jp p,UpdateObjects_Y1	; skip if positive
+  ld b,$FF		; sign extension
+UpdateObjects_Y1:
+  ld c,a		; now BC = SpeedY
   dec hl
-  dec hl
+  dec hl		; now HL = object address + 4, at Y hi
+  ld d,(hl)
   dec hl		; now HL = object address + 4, at Y lo
-;TODO: A could be positive or negative
-  add a,(hl)
-  ld (hl),a
+  ld e,(hl)		; now DE = Y position
+  ex de,hl		; now HL = Y position, DE = object address + 4
+  add hl,bc		; Y = Y + SpeedY
+; check for upper bound, wrap
+  ld a,h
+  and $7F		; max Y is $07FF = 2047
+  ld h,a
+  ex de,hl		; now DE = new Y position, HL = object address + 4, at Y lo
+  ld (hl),e		; save Y lo
+  inc hl		; now HL = object address + 5, at Y hi
+  ld (hl),d		; save Y hi
 ;
 UpdateObjects_skipY:
 ; finishing the iteration
@@ -617,6 +754,8 @@ WaitKeyUp:
 ; Returns: A=key code, $00 no key; Z=0 for key, Z=1 for no key
 ; Key codes: Fire=$01, Left=$02, Right=$04, Thrust=$08, Hyper=$10, Enter/Esc=$20
 ReadKeyboard:
+  xor a
+  ld (ReadKeyboard_3+1),a
   ld hl,ReadKeyboard_map  ; Point HL at the keyboard list
   ld b,2                  ; number of rows to check
 ReadKeyboard_0:        
@@ -627,17 +766,24 @@ ReadKeyboard_0:
   ld a,(de)               ; get bits for keys
   ld c,8                  ; number of keys in a row
 ReadKeyboard_1:
-  rla                     ; shift A left; bit 0 sets carry bit
-  jp nc,ReadKeyboard_2    ; if the bit is 0, we've found our key
-  inc hl                  ; next table address
-  dec c
-  jp nz,ReadKeyboard_1    ; continue the loop by bits
-  dec b
-  jp nz,ReadKeyboard_0    ; continue the loop by lines
-  xor a                   ; clear A, no key found
-  ret
+  rla			; shift A left; bit 0 sets carry bit
+  jp c,ReadKeyboard_2	; if the bit is 1, the key's not pressed
+  push af
+  ld a,(ReadKeyboard_3+1)
+  or (hl)               ; set bit for the key pressed
+  ld (ReadKeyboard_3+1),a
+  pop af
 ReadKeyboard_2:
-  ld a,(hl)               ; We've found a key, fetch the character code
+  inc hl		; next table address
+  dec c
+  jp nz,ReadKeyboard_1	; continue the loop by bits
+  dec b
+  jp nz,ReadKeyboard_0	; continue the loop by lines
+ReadKeyboard_3:
+  ld a,$00		; set the result
+  or a			; set/reset Z flag
+  ret
+
   or a
   ret
 ; Mapping: Arrows Left/Right - rotate the ship, Up - thrust,
@@ -646,7 +792,7 @@ ReadKeyboard_map:
   DW KeyLineEx
   DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US
   DW KeyLine0
-  DB $00,$04,$00,$02,$01,$20,$20,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
+  DB $00,$04,$08,$02,$01,$20,$20,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
 
 TextAddr:  DW  $A0FF  ; Address on the screen to draw next char
 
@@ -770,18 +916,49 @@ GetRandNum:
   xor l
   ret
 
-; Draw sprite 24x16 by XOR
+; Draw sprite 16x8 by XOR - small rocks, ship debris
 ;   HL = address on the screen
 ;   DE = sprite address
-DrawSprite24x16:
+DrawSprite16x8:
   ld a,h		; get column byte
   and $E0		; 3 top bits
-  ld (DrawSprite24x16_3+1),a	; set the mutable parameter
-  ld c,3		; 3 columns
-DrawSprite24x16_1:
-REPT 16
+  ld (DrawSprite16x8_3+1),a	; set the mutable parameter
+  ld c,2		; 2 columns
+DrawSprite16x8_1:
+REPT 8
   ld a,(de)
   xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+ENDM
+  dec c
+  ret z			; was last column => return
+; back to the top row
+  ld a,l
+  add a,8
+  ld l,a		; restore row L
+; next column
+  ld a,h
+  inc a
+  and $1F		; keep 0..31 column value
+DrawSprite16x8_3:
+  or $A0		; this parameter is mutable
+  ld h,a
+; continue the loop by columns
+  jp DrawSprite16x8_1
+
+; Draw ship sprite 24x16
+;   HL = address on the screen
+;   DE = sprite address
+DrawShipSprite:
+  ld a,h		; get column byte
+  and $E0		; 3 top bits
+  ld (DrawShipSprite_3+1),a	; set the mutable parameter
+  ld c,3		; 3 columns
+DrawShipSprite_1:
+REPT 16
+  ld a,(de)
   ld (hl),a
   inc de
   dec l
@@ -796,27 +973,26 @@ ENDM
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
-DrawSprite24x16_3:
+DrawShipSprite_3:
   or $A0		; this parameter is mutable
   ld h,a
 ; continue the loop by columns
-  jp DrawSprite24x16_1
+  jp DrawShipSprite_1
 
-; Draw sprite 24x16 by XOR reflected vertically
+; Draw ship sprite 24x16 reflected vertically
 ;   HL = address on the screen
 ;   DE = sprite address
-DrawSprite24x16R:
+DrawShipSpriteR:
   ld a,h		; get column byte
   and $E0		; 3 top bits
-  ld (DrawSprite24x16R_3+1),a	; set the mutable parameter
+  ld (DrawShipSpriteR_3+1),a	; set the mutable parameter
   ld a,l
   sub 15		; 15 lines lower
   ld l,a
   ld c,3		; 3 columns
-DrawSprite24x16R_1:
+DrawShipSpriteR_1:
 REPT 16
   ld a,(de)
-  xor (hl)
   ld (hl),a
   inc de
   inc l
@@ -831,11 +1007,11 @@ ENDM
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
-DrawSprite24x16R_3:
+DrawShipSpriteR_3:
   or $A0		; this parameter is mutable
   ld h,a
 ; continue the loop by columns
-  jp DrawSprite24x16R_1
+  jp DrawShipSpriteR_1
 
 ; Draw sprite 32x32 by XOR
 ;   HL = address on the screen

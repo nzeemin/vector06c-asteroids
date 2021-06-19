@@ -251,6 +251,10 @@ namespace SpriteRotate
                 PrepareSpriteWithAllShifts(bmp, 72, 64, 3, 16, "Shrapnel1", writer);
                 PrepareSpriteWithAllShifts(bmp, 104, 64, 4, 24, "Shrapnel2", writer);
 
+                // Debris
+                PrepareSpriteWithAllShifts(bmp, 144, 64, 2, 8, "Debris1", writer);
+                PrepareSpriteWithAllShifts(bmp, 144, 72, 2, 8, "Debris2", writer);
+
                 // Rocks
                 for (int i = 0; i < 4; i++)
                 {
