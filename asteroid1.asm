@@ -35,6 +35,7 @@ InitWaves:
 
   ld a,1
   ld (ShipStatus),a	;TEST: activate the ship
+  ld a,20
   ld (AstObjects),a	;TEST: activate the rock
   ld hl,500
   ld (AstObjects+2),hl	;TEST: set the rock X
@@ -96,19 +97,19 @@ InitWaves:
   ld (AstObjects+72+2),hl  ;TEST: set the rock X
   ld hl,400
   ld (AstObjects+72+4),hl  ;TEST: set the rock Y
-  ld a,1
+  ld a,128
   ld (ShipShotObjects+0),a  ;TEST: activate the bullet
   ld a,20
   ld (ShipShotObjects+0+6),a  ;TEST: set the bullet dX
   ld (ShipShotObjects+0+7),a  ;TEST: set the bullet dY
-  ld a,1
+  ld a,128
   ld (ShipShotObjects+8),a  ;TEST: activate the bullet
   ld hl,1366
   ld (ShipShotObjects+8+2),hl  ;TEST: set the bullet X
   ld (ShipShotObjects+8+4),hl  ;TEST: set the bullet Y
   ld a,20
   ld (ShipShotObjects+8+7),a  ;TEST: set the bullet dY
-  ld a,1
+  ld a,128
   ld (ShipShotObjects+16),a  ;TEST: activate the bullet
   ld hl,1366
   ld (ShipShotObjects+16+2),hl  ;TEST: set the bullet X
@@ -116,15 +117,20 @@ InitWaves:
   ld (ShipShotObjects+16+4),hl  ;TEST: set the bullet Y
   ld a,20
   ld (ShipShotObjects+16+7),a  ;TEST: set the bullet dY
-  ld a,1
-  ld (ShipDebrisObjects+0),a  ;TEST: activate the debris
-  ld hl,1200
-  ld (ShipDebrisObjects+0+2),hl  ;TEST: set the debris X
-  ld (ShipDebrisObjects+0+4),hl  ;TEST: set the debris Y
-  ld a,-8
-  ld (ShipDebrisObjects+0+6),a  ;TEST: set the debris dX
-  ld a,8
-  ld (ShipDebrisObjects+0+7),a  ;TEST: set the debris dY
+;   ld a,128
+;   ld (ShipDebrisObjects+0),a  ;TEST: activate the debris
+;   ld (ShipDebrisObjects+8),a  ;TEST: activate the debris
+;   ld (ShipDebrisObjects+16),a  ;TEST: activate the debris
+;   ld (ShipDebrisObjects+24),a  ;TEST: activate the debris
+;   ld hl,1200
+;   ld (ShipDebrisObjects+0+2),hl  ;TEST: set the debris X
+;   ld (ShipDebrisObjects+0+4),hl  ;TEST: set the debris Y
+;   ld (ShipDebrisObjects+8+2),hl  ;TEST: set the debris X
+;   ld (ShipDebrisObjects+8+4),hl  ;TEST: set the debris Y
+;   ld (ShipDebrisObjects+16+2),hl  ;TEST: set the debris X
+;   ld (ShipDebrisObjects+16+4),hl  ;TEST: set the debris Y
+;   ld (ShipDebrisObjects+24+2),hl  ;TEST: set the debris X
+;   ld (ShipDebrisObjects+24+4),hl  ;TEST: set the debris Y
 
 ; Game loop start
 Start_1:
@@ -148,6 +154,10 @@ Start_1:
 
   call ReadKeyboard
   call ProcessKeyboard
+
+  ld a,(ThrustSw)
+  or a
+  call nz,DoShipExplosion
 
   call UpdateObjects
 
@@ -220,12 +230,12 @@ AstPerWave:		db	2
 CurAsteroids:		db	0
 
 ; Object record format:
-; +00:      Status byte: 0 = Not active
-; +01:      Type
-; +02-03:   X position
-; +04-05:   Y position
-; +06:      X speed
-; +07:      Y speed
+; + 0:      Status byte: 0 = Not active
+; + 1:      Type / Subtype
+; + 2-3:    X position
+; + 4-5:    Y position
+; + 6:      X speed
+; + 7:      Y speed
 Objects:		; Total 38 object records
 ; Ship object record
 ShipStatus:		db	0	; 0=No Ship Or In Hyperspace, 1=Alive, $A0-FF=Ship Exploding
@@ -242,45 +252,45 @@ ScrYPos:		dw	0
 SaucerXSpeed:		db	0
 SaucerYSpeed:		db	0
 ; Asteroid object records, 26 records
-AstObjects:		db	0, 2, 0,0,0,0, 0,0
+AstObjects:		db	0, 6, 0,0,0,0, 0,0
+			db	0, 4, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
 			db	0, 2, 0,0,0,0, 0,0
 			db	0, 2, 0,0,0,0, 0,0
 			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
 ; Ship bullet objects, 4 records
-ShipShotObjects:	db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
+ShipShotObjects:	db	0, 5, 0,0,0,0, 0,0
+			db	0, 5, 0,0,0,0, 0,0
+			db	0, 5, 0,0,0,0, 0,0
+			db	0, 5, 0,0,0,0, 0,0
 ; Soucer bullet objects, 2 records
-ScrShotObjects:		db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
+ScrShotObjects:		db	0, 5, 0,0,0,0, 0,0
+			db	0, 5, 0,0,0,0, 0,0
 ; Ship debris objects, 4 records
-ShipDebrisObjects:	db	0, 4, 0,0,0,0, 0,0
-			db	0, 4, 0,0,0,0, 0,0
-			db	0, 4, 0,0,0,0, 0,0
-			db	0, 4, 0,0,0,0, 0,0
+ShipDebrisObjects:	db	0, $87, 0,0,0,0, 0,-2
+			db	0, $07, 0,0,0,0, -2,1
+			db	0, $07, 0,0,0,0, 2,-1
+			db	0, $87, 0,0,0,0, 2,2
 
 
 ;----------------------------------------------------------------------------
@@ -347,27 +357,30 @@ DrawNullProc:		; call point for a void draw procedure
   ret
 
 DrawProcTable:
-  dw DrawShipProc	; 0
-  dw DrawSauserProc	; 1
-  dw DrawRockProc	; 2
-  dw DrawBulletProc	; 3
-  dw DrawDebrisProc	; 4
-  dw DrawNullProc	; 5
-  dw DrawNullProc	; 6
-  dw DrawNullProc	; 7
+  dw DrawShipProc	; 0 - ship
+  dw DrawSauserProc	; 1 - sauser
+  dw DrawRockSProc	; 2 - S-size rock
+  dw DrawRockMProc	; 3 - M-size rock
+  dw DrawRockLProc	; 4 - L-size rock
+  dw DrawBulletProc	; 5 - ship or sauser bullets
+  dw DrawShrapnelProc	; 6 - shrapnel
+  dw DrawDebrisProc	; 7 - debris
+
+; For all draw procedures registers are:
+; HL = object address, DE = screen address, A = shift 0..7
 
 DrawShipProc:
   push af		; save A = shoft 0..7
   ld a,(ShipDir)	; get ship direction
   and $1F		; 0..31
   cp 16			; 0..15 or 16..31 ?
-  ld hl,DrawShipSprite	; draw sprite up-to-down
+  ld hl,DrawSprite24x16	; draw sprite up-to-down
   jp c,DrawShipProc_2	; ShipDir = 0..15 => jump
 ; ShipDir = 16..31
   ld c,a
   ld a,32
   sub c			; A = 16..1
-  ld hl,DrawShipSpriteR	; draw sprite down-to-up
+  ld hl,DrawSprite24x16R	; draw sprite down-to-up
 DrawShipProc_2:
   ld (DrawShipProc_4+1),hl  ; put draw sprite call address
 ; Calculate sprite address, A = 0..16
@@ -393,29 +406,50 @@ DrawShipProc_3:
   call Multiply48	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
 DrawShipProc_4:
-  call DrawShipSprite
-  ret
-
-DrawDebrisProc:
-;TODO: use shift A
-  ld hl,Debris1S0	; base sprite address
-  call Multiply16
-  ex de,hl		; now HL = screen address, DE = sprite address
-  call DrawSprite16x8
-;TODO: use Debris1/Debris2, use reflections
+  call DrawSprite24x16
   ret
 
 DrawSauserProc:
 ;TODO
   ret
 
-DrawRockProc:
-;TODO: small rocks, medium rocks
-  ld hl,RockB1S0	; base sprite address
+DrawRockSProc:
+  ld hl,RockS1S0	; base sprite address
+  call Multiply16	; calculate sprite address based on shift A = 0..7
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite16x8
+  ret
+
+DrawRockMProc:
+  ld hl,RockM1S0	; base sprite address
+  call Multiply48	; calculate sprite address based on shift A = 0..7
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite24x16
+  ret
+
+DrawRockLProc:
+  ld hl,RockL1S0	; base sprite address
   call Multiply128	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite32x32
-;TODO
+  ret
+
+DrawShrapnelProc:
+  ld c,a		; save shift
+  ld a,(hl)		; get Status
+  cp 10
+  ld a,c		; restore shift
+  jp c,DrawShrapnelProc_1  ; lifespan timer is low => jump
+  ld hl,Shrapnel1S0	; base sprite address - smaller sprite
+  call Multiply48	; calculate sprite address based on shift A = 0..7
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite24x16
+  ret
+DrawShrapnelProc_1:
+  ld hl,Shrapnel2S0	; base sprite address - bigger sprite
+  call Multiply96	; calculate sprite address based on shift A = 0..7
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite32x24
   ret
 
 DrawBulletProc:
@@ -428,7 +462,22 @@ DrawBulletProc:
   ex de,hl		; now HL = screen address
   xor (hl)
   ld (hl),a
-;TODO
+  ret
+
+DrawDebrisProc:
+  ld c,a		; save shift
+  inc hl		; now HL = object record + 1, at Type
+  ld a,(hl)
+  ld hl,Debris1S0	; base sprite address
+  rla			; check bit 7
+  jp nc,DrawDebrisProc_1
+  ld hl,Debris2S0	; base sprite address
+DrawDebrisProc_1:
+  ld a,c
+  call Multiply16	; calculate sprite address based on shift A = 0..7
+  ex de,hl		; now HL = screen address, DE = sprite address
+  call DrawSprite16x8
+;TODO: use Debris1/Debris2, use reflections
   ret
 
 ; Multiply A by 16; A = 0..7, HL = base address
@@ -462,6 +511,24 @@ Multiply48:
   add hl,bc
   ret
 
+; Multiply A by 96; A = 0..7, HL = base address
+; Result: HL = base address + A * 96
+Multiply96:
+  push hl		; store base address
+  and 7
+  add a,a
+  ld c,a
+  ld b,0
+  ld hl,TableMul96
+  add hl,bc		; now HL = address in the table
+  ld a,(hl)		; get lo
+  inc hl
+  ld h,(hl)		; get hi
+  ld l,a		; now HL = A * 48
+  pop bc		; restore base address
+  add hl,bc
+  ret
+
 ; Multiply A by 128; A = 0..7, HL = base address
 ; Result: HL = base address + A * 128
 Multiply128:
@@ -482,6 +549,8 @@ Multiply128:
 
 TableMul48:
 	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
+TableMul96:
+	dw	0, 96, 96*2, 96*3, 96*4, 96*5, 96*6, 96*7
 TableMul128:
 	dw	0, 128, 128*2, 128*3, 128*4, 128*5, 128*6, 128*7
 TableMul384:
@@ -582,7 +651,16 @@ UpdateObjects_1:
   jp z,UpdateObjects_next	; yes => skip it
   push bc
   push hl		; store object address
+  inc hl		; now HL = object address + 1, at Type
+; check the object type
+  ld a,(hl)		; get type
+  and 7			; 0..7
+  cp 5			; 5..7 ? these object types use Status as lifespan timer
+  jp c,UpdateObjects_2
+  dec hl		; go back to Status
+  dec (hl)		; decrement the Status
   inc hl
+UpdateObjects_2:
   inc hl
   inc hl
   inc hl
@@ -655,8 +733,8 @@ UpdateObjects_Y1:
   ld (hl),d		; save Y hi
 ;
 UpdateObjects_skipY:
-; finishing the iteration
   pop hl		; restore object address
+; finishing the iteration
   pop bc
 UpdateObjects_next:
   ld de,$0008		; object record size
@@ -745,6 +823,30 @@ DrawNumberBcdByteString:
   call DrawChar
   ret
 
+; Mark the ship not active; activate four debris objects;
+; copy ship X,Y position to each debris object X,Y
+DoShipExplosion:
+  xor a
+  ld (ShipStatus),a	; set not active
+  ld bc,$0420		; B = number of debris objects, C = status value for debris objects
+  ld hl,ShipDebrisObjects
+DoShipExplosion_1:
+  ld (hl),c		; set status value
+  inc hl
+  inc hl		; now HL = debris object + 2, at X lo
+  ld de,ShipXPos	; start address for copying
+REPT 4			; copy 4 bytes
+  ld a,(de)
+  inc de
+  ld (hl),a
+  inc hl
+ENDM
+  inc hl
+  inc hl		; now HL points to the next object record
+  dec b
+  jp nz,DoShipExplosion_1
+  ret
+
 ;----------------------------------------------------------------------------
 
 ; Wait for any key
@@ -822,7 +924,7 @@ DrawString:
   pop hl
   jp DrawString
 
-; Draw character on the screen using FontProto
+; Draw character on the screen using Font
 ;   A = character to show
 DrawChar:
   push hl
@@ -962,17 +1064,18 @@ DrawSprite16x8_3:
 ; continue the loop by columns
   jp DrawSprite16x8_1
 
-; Draw ship sprite 24x16
+; Draw sprite 24x16 by XOR
 ;   HL = address on the screen
 ;   DE = sprite address
-DrawShipSprite:
+DrawSprite24x16:
   ld a,h		; get column byte
   and $E0		; 3 top bits
-  ld (DrawShipSprite_3+1),a	; set the mutable parameter
+  ld (DrawSprite24x16_3+1),a	; set the mutable parameter
   ld c,3		; 3 columns
-DrawShipSprite_1:
+DrawSprite24x16_1:
 REPT 16
   ld a,(de)
+  xor (hl)
   ld (hl),a
   inc de
   dec l
@@ -987,26 +1090,27 @@ ENDM
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
-DrawShipSprite_3:
+DrawSprite24x16_3:
   or $A0		; this parameter is mutable
   ld h,a
 ; continue the loop by columns
-  jp DrawShipSprite_1
+  jp DrawSprite24x16_1
 
-; Draw ship sprite 24x16 reflected vertically
+; Draw ship sprite 24x16 by XOR reflected vertically
 ;   HL = address on the screen
 ;   DE = sprite address
-DrawShipSpriteR:
+DrawSprite24x16R:
   ld a,h		; get column byte
   and $E0		; 3 top bits
-  ld (DrawShipSpriteR_3+1),a	; set the mutable parameter
+  ld (DrawSprite24x16R_3+1),a	; set the mutable parameter
   ld a,l
   sub 15		; 15 lines lower
   ld l,a
   ld c,3		; 3 columns
-DrawShipSpriteR_1:
+DrawSprite24x16R_1:
 REPT 16
   ld a,(de)
+  xor (hl)
   ld (hl),a
   inc de
   inc l
@@ -1021,11 +1125,43 @@ ENDM
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
-DrawShipSpriteR_3:
+DrawSprite24x16R_3:
   or $A0		; this parameter is mutable
   ld h,a
 ; continue the loop by columns
-  jp DrawShipSpriteR_1
+  jp DrawSprite24x16R_1
+
+; Draw sprite 32x24 by XOR
+;   HL = address on the screen
+;   DE = sprite address
+DrawSprite32x24:
+  ld a,h		; get column byte
+  and $E0		; 3 top bits
+  ld (DrawSprite32x24_3+1),a	; set the mutable parameter
+  ld c,4		; 4 columns
+DrawSprite32x24_1:
+REPT 24
+  ld a,(de)
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+ENDM
+  dec c
+  ret z			; was last column => return
+; back to the top row
+  ld a,l
+  add a,24
+  ld l,a		; restore row L
+; next column
+  ld a,h
+  inc a
+  and $1F		; keep 0..31 column value
+DrawSprite32x24_3:
+  or $A0		; this parameter is mutable
+  ld h,a
+; continue the loop by columns
+  jp DrawSprite32x24_1
 
 ; Draw sprite 32x32 by XOR
 ;   HL = address on the screen
@@ -1034,7 +1170,7 @@ DrawSprite32x32:
   ld a,h		; get column byte
   and $E0		; 3 top bits
   ld (DrawSprite32x32_3+1),a	; set the mutable parameter
-  ld c,4		; 3 columns
+  ld c,4		; 4 columns
 DrawSprite32x32_1:
 REPT 32
   ld a,(de)

@@ -266,7 +266,7 @@ namespace SpriteRotate
                 }
                 for (int i = 0; i < 4; i++)
                 {
-                    PrepareSpriteWithAllShifts(bmp, 16 + 32 * i, 128, 4, 32, $"RockB{i}", writer);
+                    PrepareSpriteWithAllShifts(bmp, 16 + 32 * i, 128, 4, 32, $"RockL{i}", writer);
                 }
 
                 Console.WriteLine("astrosprs.asm saved");
