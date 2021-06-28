@@ -157,7 +157,7 @@ Start_1:
 
   ld a,(ThrustSw)
   or a
-  call nz,DoShipExplosion
+  call nz,DoShipExplosion	; TEST
 
   call UpdateObjects
 
@@ -252,13 +252,13 @@ ScrYPos:		dw	0
 SaucerXSpeed:		db	0
 SaucerYSpeed:		db	0
 ; Asteroid object records, 26 records
-AstObjects:		db	0, 6, 0,0,0,0, 0,0
+AstObjects:		db	0, 4, 0,0,0,0, 0,0
 			db	0, 4, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
-			db	0, 2, 0,0,0,0, 0,0
+			db	0, $83, 0,0,0,0, 0,0
+			db	0, $C3, 0,0,0,0, 0,0
+			db	0, $82, 0,0,0,0, 0,0
+			db	0, $C2, 0,0,0,0, 0,0
+			db	0, $42, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
@@ -366,6 +366,16 @@ DrawProcTable:
   dw DrawShrapnelProc	; 6 - shrapnel
   dw DrawDebrisProc	; 7 - debris
 
+DrawObjsXShift:
+  db 8, 8		; 0 - ship
+  db 8, 7		; 1 - sauser
+  db 4, 4		; 2 - S-size rock
+  db 8, 8		; 3 - M-size rock
+  db 12, 16		; 4 - L-size rock
+  db 0, 0		; 5 - ship or sauser bullets
+  db 8, 8		; 6 - shrapnel
+  db 4, 4		; 7 - debris
+
 ; For all draw procedures registers are:
 ; HL = object address, DE = screen address, A = shift 0..7
 
@@ -403,7 +413,7 @@ DrawShipProc_2:
   add hl,bc
 DrawShipProc_3:
   pop af		; restore shift A = 0..7
-  call Multiply48	; calculate sprite address based on shift A = 0..7
+  call Multiply48Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
 DrawShipProc_4:
   call DrawSprite24x16
@@ -414,15 +424,41 @@ DrawSauserProc:
   ret
 
 DrawRockSProc:
-  ld hl,RockS1S0	; base sprite address
-  call Multiply16	; calculate sprite address based on shift A = 0..7
+  push af		; save shift
+  inc hl		; now HL = object record + 1, at Type
+  ld a,(hl)		; get type/subtype
+  and $C0		; bits 6-7 = subtype
+  ld l,a
+  ld h,0
+  add hl,hl		; subtype 0..3 * 128
+  ld bc,RockS0S0	; base sprite address
+  add hl,bc
+  pop af		; restore shift
+  call Multiply16Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite16x8
   ret
 
 DrawRockMProc:
-  ld hl,RockM1S0	; base sprite address
-  call Multiply48	; calculate sprite address based on shift A = 0..7
+  push af		; save shift
+  inc hl		; now HL = object record + 1, at Type
+  ld a,(hl)		; get type/subtype
+  rla
+  rla
+  and 3			; subtype 0..3
+  add a,a
+  ld l,a
+  ld h,0
+  ld bc,TableMul384
+  add hl,bc
+  ld a,(hl)		; lo byte
+  inc hl
+  ld h,(hl)		; hi byte
+  ld l,a
+  ld bc,RockM1S0	; base sprite address
+  add hl,bc
+  pop af
+  call Multiply48Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite24x16
   ret
@@ -441,13 +477,13 @@ DrawShrapnelProc:
   ld a,c		; restore shift
   jp c,DrawShrapnelProc_1  ; lifespan timer is low => jump
   ld hl,Shrapnel1S0	; base sprite address - smaller sprite
-  call Multiply48	; calculate sprite address based on shift A = 0..7
+  call Multiply48Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite24x16
   ret
 DrawShrapnelProc_1:
   ld hl,Shrapnel2S0	; base sprite address - bigger sprite
-  call Multiply96	; calculate sprite address based on shift A = 0..7
+  call Multiply96Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite32x24
   ret
@@ -474,7 +510,7 @@ DrawDebrisProc:
   ld hl,Debris2S0	; base sprite address
 DrawDebrisProc_1:
   ld a,c
-  call Multiply16	; calculate sprite address based on shift A = 0..7
+  call Multiply16Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite16x8
 ;TODO: use Debris1/Debris2, use reflections
@@ -482,7 +518,7 @@ DrawDebrisProc_1:
 
 ; Multiply A by 16; A = 0..7, HL = base address
 ; Result: HL = base address + A * 16
-Multiply16:
+Multiply16Base:
   and 7
   add a,a
   add a,a
@@ -495,7 +531,7 @@ Multiply16:
 
 ; Multiply A by 48; A = 0..7, HL = base address
 ; Result: HL = base address + A * 48
-Multiply48:
+Multiply48Base:
   push hl		; store base address
   and 7
   add a,a
@@ -503,17 +539,16 @@ Multiply48:
   ld b,0
   ld hl,TableMul48
   add hl,bc		; now HL = address in the table
-  ld a,(hl)		; get lo
+  ld c,(hl)		; get lo
   inc hl
-  ld h,(hl)		; get hi
-  ld l,a		; now HL = A * 48
-  pop bc		; restore base address
+  ld b,(hl)		; get hi; now HL = A * 48
+  pop hl		; restore base address
   add hl,bc
   ret
 
 ; Multiply A by 96; A = 0..7, HL = base address
 ; Result: HL = base address + A * 96
-Multiply96:
+Multiply96Base:
   push hl		; store base address
   and 7
   add a,a
@@ -521,11 +556,10 @@ Multiply96:
   ld b,0
   ld hl,TableMul96
   add hl,bc		; now HL = address in the table
-  ld a,(hl)		; get lo
+  ld c,(hl)		; get lo
   inc hl
-  ld h,(hl)		; get hi
-  ld l,a		; now HL = A * 48
-  pop bc		; restore base address
+  ld b,(hl)		; get hi; now HL = A * 48
+  pop hl		; restore base address
   add hl,bc
   ret
 
@@ -539,11 +573,10 @@ Multiply128:
   ld b,0
   ld hl,TableMul128
   add hl,bc		; now HL = address in the table
-  ld a,(hl)		; get lo
+  ld c,(hl)		; get lo
   inc hl
-  ld h,(hl)		; get hi
-  ld l,a		; now HL = A * 128
-  pop bc		; restore base address
+  ld b,(hl)		; get hi; now BC = A * 128
+  pop hl		; restore base address
   add hl,bc
   ret
 
@@ -554,18 +587,29 @@ TableMul96:
 TableMul128:
 	dw	0, 128, 128*2, 128*3, 128*4, 128*5, 128*6, 128*7
 TableMul384:
-	dw	0, 384, 384*2, 384*3, 384*4, 384*5, 384*6, 384*7
-	dw	384*8, 384*9, 384*10, 384*11, 384*12, 384*13, 384*14, 384*15
+	dw	384*0,  384*1,  384*2,  384*3,  384*4,  384*5,  384*6,  384*7
+	dw	384*8,  384*9,  384*10, 384*11, 384*12, 384*13, 384*14, 384*15
 	dw	384*16, 384*17, 384*18, 384*19, 384*20, 384*21, 384*22, 384*23
 	dw	384*24, 384*25, 384*26, 384*27, 384*28, 384*29, 384*30, 384*31
 
 
 ; Calculate screen address and shift from the object coordinates
+;   A = object type
 ;   HL = object address + 2, points to X pos word, next one is Y pos word
 ; Returns:
 ;   HL = screen address
 ;   A = shift 0..7
 CalculateScreenAddr:
+; calculate address for X,Y-shifts for the object
+  and 7			; object type 0..7
+  add a,a
+  ld de,DrawObjsXShift
+  add a,e
+  ld e,a
+  jp nc,CalculateScreenAddr_1
+  inc d
+CalculateScreenAddr_1:	; now DE = address for X,Y-shifts
+  push de		; save the address
 ; get X position
   ld e,(hl)		; get X lo
   inc hl		; now HL = object record + 3, at X hi
@@ -604,6 +648,11 @@ CalculateScreenAddr:
   ld h,a
   ld a,l
   rra			; 4 lo; now A = 0..255 screen X pos
+; sub X-shift
+  pop hl		; restore address for X,Y-shifts
+  sub (hl)		; now A = 0..255 screen X pos, minus X-shift
+  inc hl
+  ld b,(hl)		; get Y-shift for later use
   push af		; save A for the shift
 ; divide A by 8
   rra
@@ -634,12 +683,14 @@ CalculateScreenAddr:
   ld d,a
   ld a,e
   rra			; 3 lo, now A = 0..255 screen Y pos
+  add a,b		; now A = 0..255 screen Y pos, plus Y-shift
 ; prepare results and return
   ld l,a
   pop af		; restore A screen column
   or $E0		; plane start address, hi byte
   ld h,a
   pop af		; restore A shift
+  and 7			; keep 0..7 shift value
   ret
 
 UpdateObjects:
@@ -765,8 +816,10 @@ CenterShip:
   ld hl,1024
   ld (ShipYPos),hl
   xor a
-  ld (ShipXAccel),a
-  ld (ShipYAccel),a
+  ld hl,ShipXAccel
+  ld (hl),a
+  inc hl
+  ld (hl),a
   ret
 
 DrawPlayerScore:
@@ -900,8 +953,6 @@ ReadKeyboard_3:
   or a			; set/reset Z flag
   ret
 
-  or a
-  ret
 ; Mapping: Arrows Left/Right - rotate the ship, Up - thrust,
 ;          US/SS/RusLat/ZB - fire, Tab - hyper
 ReadKeyboard_map:
