@@ -299,7 +299,7 @@ ShipDebrisObjects:	db	0, $87, 0,0,0,0, 0,-2
 
 ; Initialize Game Variables
 InitGameVars:
-  ld a,11;TEST		; Prepare to start wave 1 with 4 asteroids (+2 later).
+  ld a,23;TEST		; Prepare to start wave 1 with 4 asteroids (+2 later).
   ld (AstPerWave),a
 InitShipsPerGame:
   xor a
@@ -466,11 +466,22 @@ DrawRockMProc:
   ret
 
 DrawRockLProc:
-  ld hl,RockL1S0	; base sprite address
-  call Multiply128	; calculate sprite address based on shift A = 0..7
-  ex de,hl		; now HL = screen address, DE = sprite address
-  call DrawSprite32x32
-  ret
+  ld hl,DrawRockLAddrs	; table address
+  add a,a
+  add a,l
+  ld l,a
+  jp nc,DrawRockLProc_1
+  inc h
+DrawRockLProc_1:	; now HL = address in the table
+  ld c,(hl)		; get lo
+  inc hl
+  ld b,(hl)		; get hi; now BC = sprite drawing code address
+  push bc		; store the sprite drawing code address to call
+  ex de,hl		; now HL = screen address
+  ret			; jumping to the sprite drawing code
+DrawRockLAddrs:
+  dw	DrawRockL0S0, DrawRockL0S1, DrawRockL0S2, DrawRockL0S3
+  dw	DrawRockL0S4, DrawRockL0S5, DrawRockL0S6, DrawRockL0S7
 
 DrawShrapnelProc:
   ld c,a		; save shift
@@ -1302,37 +1313,13 @@ DrawSprite32x24_3:
 ; continue the loop by columns
   jp DrawSprite32x24_1
 
-; Draw sprite 32x32 by XOR
-;   HL = address on the screen
-;   DE = sprite address
-DrawSprite32x32:
-  ld a,h		; get column byte
-  and $E0		; 3 top bits
-  ld (DrawSprite32x32_3+1),a	; set the mutable parameter
-  ld c,4		; 4 columns
-DrawSprite32x32_1:
-REPT 32
-  ld a,(de)
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-ENDM
-  dec c
-  ret z			; was last column => return
-; back to the top row
-  ld a,l
-  add a,32
-  ld l,a		; restore row L
-; next column
+NextColumn:
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
-DrawSprite32x32_3:
-  or $A0		; this parameter is mutable
+  or $E0		;TODO: this parameter should be mutable
   ld h,a
-; continue the loop by columns
-  jp DrawSprite32x32_1
+  ret
 
 ;----------------------------------------------------------------------------
 AstroCodeEnd:
@@ -1342,6 +1329,8 @@ INCLUDE "astrofont.asm"
 AstroSpriteBeg:
 INCLUDE "astrosprs.asm"
 ShotSprite:	db	$80,$40,$20,$10,$08,$04,$02,$01
+AstroSpriteMid:
+INCLUDE "astrosprt.asm"
 AstroSpriteEnd:
 
   ORG $A000

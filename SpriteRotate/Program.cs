@@ -136,6 +136,136 @@ namespace SpriteRotate
             Console.WriteLine($"{outfilename} saved");
         }
 
+        static byte GetNextValue(byte[] bytes, int index, byte x1skip = 0, byte x2skip = 0)
+        {
+            for (int n = index; n < bytes.Length; n++)
+            {
+                byte b = bytes[n];
+                if (b == 0 || b == x1skip || b == x2skip)
+                    continue;
+                return b;
+            }
+
+            return 0;
+        }
+
+        static void WriteSpriteCodeSkipRows(int skiprows, bool order, StreamWriter writer)
+        {
+            if (skiprows > 4)
+            {
+                writer.WriteLine("  ld a,l");
+                writer.WriteLine("  " + (order ? "sub " : "add a,") + $"${skiprows:X2}\t\t; skip {skiprows} rows");
+                writer.WriteLine("  ld l,a");
+            }
+            else
+            {
+                for (int i = 0; i < skiprows; i++)
+                    writer.WriteLine("  " + (order ? "dec l" : "inc l")); // next row
+            }
+        }
+
+        static void WriteSprite32x32Code(byte[] octets, StreamWriter writer)
+        {
+            const int cols = 4;
+            const int rows = 32;
+
+            // First, unroll the snake into linear order
+            byte[] bytes = new byte[octets.Length];
+            for (int n = 0; n < cols * rows; n++)
+            {
+                int col = n / rows;
+                bool order = (col % 2) == 0;
+                if (order)
+                    bytes[n] = octets[n];
+                else
+                    bytes[n] = octets[col * rows + rows - 1 - (n - col * rows)];
+            }
+
+            // Now write the code
+            byte b = 0, c = 0, d = 0, e = 0, skiprows = 0;
+            for (int n = 0; n < cols * rows; n++)
+            {
+                int col = n / rows;
+                bool order = (col % 2) == 0;
+                int row = order ? n - col * rows : rows - 1 - (n - col * rows);
+                byte a = bytes[n];
+
+                //TODO: if first column is empty
+
+                if (a == 0)
+                    skiprows++;
+                else 
+                {
+                    if (skiprows > 0)
+                    {
+                        WriteSpriteCodeSkipRows(skiprows, order, writer);
+                        skiprows = 0;
+                    }
+
+                    if (a != b && a != c && a != d && a != e)
+                    {
+                        byte v1 = GetNextValue(bytes, n);
+                        byte v2 = GetNextValue(bytes, n, v1);
+                        byte v3 = GetNextValue(bytes, n, v1, v2);
+                        //TODO: check for zeroes
+                        if (b == 0 && c == 0)
+                        {
+                            b = v2; c = v1;
+                            writer.WriteLine($"  ld bc,${v2:X2}{v1:X2}");
+                        }
+                        else if (d == 0 && e == 0)
+                        {
+                            d = v2; e = v1;
+                            writer.WriteLine($"  ld de,${v2:X2}{v1:X2}");
+                        }
+                        else if (v2 != 0 && (d == v2 || e == v2))
+                        {
+                            b = v3; c = v1;
+                            writer.WriteLine($"  ld bc,${v3:X2}{v1:X2}");
+                        }
+                        else if (v2 != 0 && (b == v2 || c == v2))
+                        {
+                            d = v3; e = v1;
+                            writer.WriteLine($"  ld de,${v3:X2}{v1:X2}");
+                        }
+                        else
+                        {
+                            d = v2; e = v1;
+                            writer.WriteLine($"  ld de,${v2:X2}{v1:X2}");
+                        }
+                    }
+
+                    if (a == b)
+                        writer.WriteLine("  ld a,b");
+                    else if (a == c)
+                        writer.WriteLine("  ld a,c");
+                    else if (a == d)
+                        writer.WriteLine("  ld a,d");
+                    else if (a == e)
+                        writer.WriteLine("  ld a,e");
+                    writer.WriteLine("  xor (hl)");
+                    writer.WriteLine($"  ld (hl),a\t\t; col {col} row {row} = ${a:X2}");
+
+                    if (n - col * rows < 31)
+                        skiprows = 1;
+                }
+
+                if (n % rows == rows - 1 && n < cols * rows - 1) // it was the last row
+                {
+                    if (skiprows > 0)
+                    {
+                        WriteSpriteCodeSkipRows(skiprows, order, writer);
+                        skiprows = 0;
+                    }
+                    
+                    //TODO: Check if next column is last and empty
+                    writer.WriteLine($"  call NextColumn\t; col {col + 1}");
+                }
+            }
+
+            writer.WriteLine("  ret");
+        }
+
         static byte[] PrepareSpriteArray(Bitmap bmp, int x, int y, int cols, int rows)
         {
             var octets = new byte[cols * rows];
@@ -228,10 +358,10 @@ namespace SpriteRotate
 
         static void PrepareSpritesText()
         {
+            var bmp = new Bitmap(@"..\astrosprs.png");
+
             using (var writer = new StreamWriter("astrosprs.asm"))
             {
-                var bmp = new Bitmap(@"..\astrosprs.png");
-
                 // Ship
                 for (int i = 0; i < 17; i++)
                 {
@@ -264,13 +394,33 @@ namespace SpriteRotate
                 {
                     PrepareSpriteWithAllShifts(bmp, 16 + 24 * i, 104, 3, 16, $"RockM{i}", writer);
                 }
-                for (int i = 0; i < 4; i++)
-                {
-                    PrepareSpriteWithAllShifts(bmp, 16 + 32 * i, 128, 4, 32, $"RockL{i}", writer);
-                }
+                //for (int i = 0; i < 4; i++)
+                //{
+                //    PrepareSpriteWithAllShifts(bmp, 16 + 32 * i, 128, 4, 32, $"RockL{i}", writer);
+                //}
 
                 Console.WriteLine("astrosprs.asm saved");
             }
+
+            using (var writer = new StreamWriter("astrosprt.asm"))
+            {
+                for (int i = 0; i < 4; i++)
+                {
+                    var octets = PrepareSpriteArray(bmp, 16, 128, 4, 32);
+
+                    writer.WriteLine($"DrawRockL{i}S0:");
+                    WriteSprite32x32Code(octets, writer);
+
+                    for (int j = 1; j < 8; j++)
+                    {
+                        ShiftByteArray(octets, 4, 32);
+                        writer.WriteLine($"DrawRockL{i}S{j}:");
+                        WriteSprite32x32Code(octets, writer);
+                    }
+                }
+            }
+
+            Console.WriteLine("astrosprt.asm saved");
         }
 
         static Graphics _g = null;
