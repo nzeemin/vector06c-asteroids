@@ -4,7 +4,7 @@
 Start	.equ	280h
 
 	.EXPORT KeyLineEx, KeyLine0
-	.EXPORT IntCount, SetPaletteGame
+	.EXPORT IntCount, SetPaletteGame0, SetPaletteGame1
 
 ;----------------------------------------------------------------------------
 
@@ -54,11 +54,14 @@ Restart:
 	jp Start
 
 ; Programming the Palette
+SetPaletteGame0:
+	lxi	h, PaletteGame0+15
+	jp	SetPalette
+SetPaletteGame1:
+	lxi	h, PaletteGame1+15
+	jp	SetPalette
 SetPaletteTitle:
 	lxi	h, PaletteTitle+15
-	jp	SetPalette
-SetPaletteGame:
-	lxi	h, PaletteGame+15
 SetPalette:
 	ei
 	hlt
@@ -125,21 +128,38 @@ ColorGame .equ 11111110b    ; Color for game
 ColorText .equ 10111111b    ; Color for text
 ColorBoth .equ 11111111b    ; Color for game and text
 ; Palette colors, game
-PaletteGame:
+PaletteGame0:		; Palette for Plane 0 + Plane 2
 	.db	ColorNone	;0
 	.db	ColorGame	;1
-	.db	ColorGame	;2
+	.db	ColorNone	;2
 	.db	ColorGame	;3
 	.db	ColorText	;4
 	.db	ColorBoth	;5
-	.db	ColorBoth	;6
+	.db	ColorText	;6
 	.db	ColorBoth	;7
 	.db	ColorNone	;8
 	.db	ColorGame	;9
-	.db	ColorGame	;10
+	.db	ColorNone	;10
 	.db	ColorGame	;11
 	.db	ColorText	;12
 	.db	ColorBoth	;13
+	.db	ColorText	;14
+	.db	ColorBoth	;15
+PaletteGame1:		; Palette for Plane 1 + Plane 2
+	.db	ColorNone	;0
+	.db	ColorNone	;1
+	.db	ColorGame	;2
+	.db	ColorGame	;3
+	.db	ColorText	;4
+	.db	ColorText	;5
+	.db	ColorBoth	;6
+	.db	ColorBoth	;7
+	.db	ColorNone	;8
+	.db	ColorNone	;9
+	.db	ColorGame	;10
+	.db	ColorGame	;11
+	.db	ColorText	;12
+	.db	ColorText	;13
 	.db	ColorBoth	;14
 	.db	ColorBoth	;15
 ; Palette colors, title screen
@@ -153,13 +173,13 @@ PaletteTitle:
 	.db	$3F	;6
 	.db	$FF	;7
 	.db	$00	;8
-	.db	$00	;9
-	.db	$00	;10
-	.db	$00	;11
-	.db	$00	;12
-	.db	$00	;13
-	.db	$00	;14
-	.db	$00	;15
+	.db	$C0	;9
+	.db	$07	;10
+	.db	$C7	;11
+	.db	$38	;12
+	.db	$F8	;13
+	.db	$3F	;14
+	.db	$FF	;15
 
 ;----------------------------------------------------------------------------
 

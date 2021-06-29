@@ -17,15 +17,19 @@ Start:
   ld (TextAddr),hl
   ld hl,STitle2
   call DrawString
-
+; Waiting on the title screen
   call WaitAnyKey
-  call ClearPlane012
-  call SetPaletteGame
+;TODO: Increment random seeds while we're waiting
+
+  call ClearPlane012	; Clear the whole screen
+  call SetPaletteGame0
+
+  ld A,(CurrentPlaneHi)
+  call SwitchToPlane
 
 InitGame:
-  call InitGameVars	; Initialize various game variables.
-
-  call CenterShip	; Center ship on display and zero velocity.
+  call InitGameVars	; Initialize various game variables
+  call CenterShip	; Center ship on display and zero velocity
 
 InitWaves:
   call InitWaveVars
@@ -44,6 +48,7 @@ Start_1:
 ;  ld (Random16_seed2),hl
 
 ;  di
+; Show frame count at right-top corner
   ld hl,$BFFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
@@ -70,7 +75,8 @@ Start_1:
   call UpdateObjects		; Update position for all objects
 ;TODO: call HitDectection
 
-  call ClearPlane0
+  ld A,(CurrentPlaneHi)
+  call ClearPlaneA
 
   call DrawObjects
 
@@ -82,7 +88,8 @@ Start_1:
   halt
   jp Start_1		; continue the game loop
 
-LastIntCount: db 0
+LastIntCount:	db 0
+CurrentPlaneHi:	db $E0	; Current plane address hi byte
 
 STitle1:	DEFM " ORIGINAL GAME 1979 ATARI INC",0
 STitle2:	DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0
@@ -612,7 +619,8 @@ CalcScreenAddr_1:	; now DE = address for X,Y-shifts
 ; prepare results and return
   ld l,a
   pop af		; restore A screen column
-  or $E0		; plane start address, hi byte
+CalcScreenAddr_P:
+  or $E0		; plane start address, hi byte - mutable parameter
   ld h,a
   pop af		; restore A shift
   and 7			; keep 0..7 shift value
@@ -1019,17 +1027,20 @@ DrawChar_next:
   pop hl
   ret
 
+; Clear the whole screen
 ClearPlane012:
-  call ClearPlane0
-  call ClearPlane1
-ClearPlane2:
+  ld hl,$0000
+  call ClearPlane
+  ld hl,$E000
+  call ClearPlane
   ld hl,$C000
   jp ClearPlane
-ClearPlane1:
-  ld hl,$E000
-  jp ClearPlane
-ClearPlane0:
-  ld hl,$0000
+;
+; Clear plane selected by A = plane address hi byte
+ClearPlaneA:
+  add a,$20
+  ld h,a
+  ld l,$00
 ClearPlane:
   ld (ClearPlane_0+1),hl
   xor a
@@ -1091,6 +1102,13 @@ GetRandNum:
   pop bc
   ld a,h
   xor l
+  ret
+
+; Set mutable parameters to draw sprites on the given plane
+;   A = plane address hi byte
+SwitchToPlane:
+  ld (NextColumn_P+1),a
+  ld (CalcScreenAddr_P+1),a
   ret
 
 ; Draw sprite 16x8 by XOR - small rocks, ship debris
@@ -1228,7 +1246,8 @@ NextColumn:
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
-  or $E0		;TODO: this parameter should be mutable
+NextColumn_P:
+  or $E0		; this parameter is be mutable
   ld h,a
   ret
 
