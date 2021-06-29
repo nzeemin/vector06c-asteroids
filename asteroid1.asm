@@ -35,88 +35,88 @@ InitWaves:
 
   ld a,1
   ld (ShipStatus),a	;TEST: activate the ship
-  ld a,20
-  ld (AstObjects),a	;TEST: activate the rock
-  ld hl,500
-  ld (AstObjects+2),hl	;TEST: set the rock X
-  ld (AstObjects+4),hl	;TEST: set the rock Y
-  ld a,7
-  ld (AstObjects+6),a  ;TEST: set the rock dX
-  ld (AstObjects+7),a  ;TEST: set the rock dY
-  ld a,1
-  ld (AstObjects+8),a	;TEST: activate the rock
-  ld hl,100
-  ld (AstObjects+8+2),hl  ;TEST: set the rock X
-  ld hl,1600
-  ld (AstObjects+8+4),hl  ;TEST: set the rock Y
-  ld a,10
-  ld (AstObjects+8+6),a  ;TEST: set the rock dX
-  ld (AstObjects+8+7),a  ;TEST: set the rock dY
-  ld a,1
-  ld (AstObjects+16),a	;TEST: activate the rock
-  ld hl,1800
-  ld (AstObjects+16+2),hl  ;TEST: set the rock X
-  ld (AstObjects+16+4),hl  ;TEST: set the rock Y
-  ld a,12
-  ld (AstObjects+16+6),a  ;TEST: set the rock dX
-  ld (AstObjects+16+7),a  ;TEST: set the rock dY
-  ld a,1
-  ld (AstObjects+32),a	;TEST: activate the rock
-  ld hl,1900
-  ld (AstObjects+32+2),hl  ;TEST: set the rock X
-  ld hl,600
-  ld (AstObjects+32+4),hl  ;TEST: set the rock Y
-  ld a,1
-  ld (AstObjects+40),a	;TEST: activate the rock
-  ld hl,300
-  ld (AstObjects+40+2),hl  ;TEST: set the rock X
-  ld hl,1850
-  ld (AstObjects+40+4),hl  ;TEST: set the rock Y
-  ld a,5
-  ld (AstObjects+40+6),a  ;TEST: set the rock dX
-  ld (AstObjects+40+7),a  ;TEST: set the rock dY
-  ld a,1
-  ld (AstObjects+48),a	;TEST: activate the rock
-  ld hl,1200
-  ld (AstObjects+48+2),hl  ;TEST: set the rock X
-  ld hl,200
-  ld (AstObjects+48+4),hl  ;TEST: set the rock Y
-  ld a,1
-  ld (AstObjects+56),a	;TEST: activate the rock
-  ld hl,600
-  ld (AstObjects+56+2),hl  ;TEST: set the rock X
-  ld a,1
-  ld (AstObjects+64),a	;TEST: activate the rock
-  ld hl,2400
-  ld (AstObjects+64+2),hl  ;TEST: set the rock X
-  ld hl,1400
-  ld (AstObjects+64+4),hl  ;TEST: set the rock Y
-  ld a,1
-  ld (AstObjects+72),a	;TEST: activate the rock
-  ld hl,2200
-  ld (AstObjects+72+2),hl  ;TEST: set the rock X
-  ld hl,400
-  ld (AstObjects+72+4),hl  ;TEST: set the rock Y
-  ld a,128
-  ld (ShipShotObjects+0),a  ;TEST: activate the bullet
-  ld a,20
-  ld (ShipShotObjects+0+6),a  ;TEST: set the bullet dX
-  ld (ShipShotObjects+0+7),a  ;TEST: set the bullet dY
-  ld a,128
-  ld (ShipShotObjects+8),a  ;TEST: activate the bullet
-  ld hl,1366
-  ld (ShipShotObjects+8+2),hl  ;TEST: set the bullet X
-  ld (ShipShotObjects+8+4),hl  ;TEST: set the bullet Y
-  ld a,20
-  ld (ShipShotObjects+8+7),a  ;TEST: set the bullet dY
-  ld a,128
-  ld (ShipShotObjects+16),a  ;TEST: activate the bullet
-  ld hl,1366
-  ld (ShipShotObjects+16+2),hl  ;TEST: set the bullet X
-  ld hl,1200
-  ld (ShipShotObjects+16+4),hl  ;TEST: set the bullet Y
-  ld a,20
-  ld (ShipShotObjects+16+7),a  ;TEST: set the bullet dY
+;   ld a,20
+;   ld (AstObjects),a	;TEST: activate the rock
+;   ld hl,500
+;   ld (AstObjects+2),hl	;TEST: set the rock X
+;   ld (AstObjects+4),hl	;TEST: set the rock Y
+;   ld a,7
+;   ld (AstObjects+6),a  ;TEST: set the rock dX
+;   ld (AstObjects+7),a  ;TEST: set the rock dY
+;   ld a,1
+;   ld (AstObjects+8),a	;TEST: activate the rock
+;   ld hl,100
+;   ld (AstObjects+8+2),hl  ;TEST: set the rock X
+;   ld hl,1600
+;   ld (AstObjects+8+4),hl  ;TEST: set the rock Y
+;   ld a,10
+;   ld (AstObjects+8+6),a  ;TEST: set the rock dX
+;   ld (AstObjects+8+7),a  ;TEST: set the rock dY
+;   ld a,1
+;   ld (AstObjects+16),a	;TEST: activate the rock
+;   ld hl,1800
+;   ld (AstObjects+16+2),hl  ;TEST: set the rock X
+;   ld (AstObjects+16+4),hl  ;TEST: set the rock Y
+;   ld a,12
+;   ld (AstObjects+16+6),a  ;TEST: set the rock dX
+;   ld (AstObjects+16+7),a  ;TEST: set the rock dY
+;   ld a,1
+;   ld (AstObjects+32),a	;TEST: activate the rock
+;   ld hl,1900
+;   ld (AstObjects+32+2),hl  ;TEST: set the rock X
+;   ld hl,600
+;   ld (AstObjects+32+4),hl  ;TEST: set the rock Y
+;   ld a,1
+;   ld (AstObjects+40),a	;TEST: activate the rock
+;   ld hl,300
+;   ld (AstObjects+40+2),hl  ;TEST: set the rock X
+;   ld hl,1850
+;   ld (AstObjects+40+4),hl  ;TEST: set the rock Y
+;   ld a,5
+;   ld (AstObjects+40+6),a  ;TEST: set the rock dX
+;   ld (AstObjects+40+7),a  ;TEST: set the rock dY
+;   ld a,1
+;   ld (AstObjects+48),a	;TEST: activate the rock
+;   ld hl,1200
+;   ld (AstObjects+48+2),hl  ;TEST: set the rock X
+;   ld hl,200
+;   ld (AstObjects+48+4),hl  ;TEST: set the rock Y
+;   ld a,1
+;   ld (AstObjects+56),a	;TEST: activate the rock
+;   ld hl,600
+;   ld (AstObjects+56+2),hl  ;TEST: set the rock X
+;   ld a,1
+;   ld (AstObjects+64),a	;TEST: activate the rock
+;   ld hl,2400
+;   ld (AstObjects+64+2),hl  ;TEST: set the rock X
+;   ld hl,1400
+;   ld (AstObjects+64+4),hl  ;TEST: set the rock Y
+;   ld a,1
+;   ld (AstObjects+72),a	;TEST: activate the rock
+;   ld hl,2200
+;   ld (AstObjects+72+2),hl  ;TEST: set the rock X
+;   ld hl,400
+;   ld (AstObjects+72+4),hl  ;TEST: set the rock Y
+;   ld a,128
+;   ld (ShipShotObjects+0),a  ;TEST: activate the bullet
+;   ld a,20
+;   ld (ShipShotObjects+0+6),a  ;TEST: set the bullet dX
+;   ld (ShipShotObjects+0+7),a  ;TEST: set the bullet dY
+;   ld a,128
+;   ld (ShipShotObjects+8),a  ;TEST: activate the bullet
+;   ld hl,1366
+;   ld (ShipShotObjects+8+2),hl  ;TEST: set the bullet X
+;   ld (ShipShotObjects+8+4),hl  ;TEST: set the bullet Y
+;   ld a,20
+;   ld (ShipShotObjects+8+7),a  ;TEST: set the bullet dY
+;   ld a,128
+;   ld (ShipShotObjects+16),a  ;TEST: activate the bullet
+;   ld hl,1366
+;   ld (ShipShotObjects+16+2),hl  ;TEST: set the bullet X
+;   ld hl,1200
+;   ld (ShipShotObjects+16+4),hl  ;TEST: set the bullet Y
+;   ld a,20
+;   ld (ShipShotObjects+16+7),a  ;TEST: set the bullet dY
 ;   ld a,128
 ;   ld (ShipDebrisObjects+0),a  ;TEST: activate the debris
 ;   ld (ShipDebrisObjects+8),a  ;TEST: activate the debris
@@ -297,7 +297,7 @@ ShipDebrisObjects:	db	0, $87, 0,0,0,0, 0,-2
 
 ; Initialize Game Variables
 InitGameVars:
-  ld a,2		; Prepare to start wave 1 with 4 asteroids (+2 later).
+  ld a,11;TEST		; Prepare to start wave 1 with 4 asteroids (+2 later).
   ld (AstPerWave),a
 InitShipsPerGame:
   xor a
@@ -806,7 +806,64 @@ SaucerReset:
 
 ; Initialize Asteroid Wave Variables
 InitWaveVars:
-;TODO
+  ld de,AstObjects
+  ld a,(AstPerWave)
+  ld b,a		; counter
+InitWaveVars_1:
+  push bc
+  ld a,1		; 1 = active
+  ld (de),a		; set asteroid state to Active
+  inc de
+; set type and X position
+  call Random16		; get HL = random number
+  ex de,hl		; now HL = object record + 1, DE = random number
+  ld a,d
+  and $C0		; bits 6-7 for random rock subtype
+  or 4			; type 4 - L-size rock
+  ld (hl),a		; set asteroid type
+  inc hl		; now DE = object record + 2, at X lo
+  ld (hl),e		; set asteroid X lo
+  inc hl
+  ld a,d
+  and 7 ;TODO: make it better:
+  ;TODO: if upper bit = 0, X = random and $03FF         => X = 0..1023
+  ;TODO: if upper bit = 1, X = $0AAA - random and $03FF => X = 2730..1707
+  ld (hl),a		; set asteroid X hi
+  inc hl
+  ex de,hl
+; set Y position
+  call Random16		; get HL = random number
+  ex de,hl		; now HL = object record + 4, DE = random number
+  ld (hl),e		; set asteroid Y lo
+  inc hl
+  ld a,d
+  and 7
+  ld (hl),a		; set asteroid Y hi
+  inc hl
+  ex de,hl
+;TODO: set speed X,Y
+  call Random16		; get HL = random number
+  ex de,hl		; now HL = object record + 6, DE = random number
+  ld a,e
+  and $8F		; keep the sign bit and lower nibble
+  jp p,InitWaveVars_3	; jump if positive
+  or $F0		; extend the sign for negative number
+InitWaveVars_3:
+  ld (hl),a		; set X velocity
+  inc hl
+  ld a,d
+  and $8F		; keep the sign bit and lower nibble
+  jp p,InitWaveVars_4	; jump if positive
+  or $F0		; extend the sign for negative number
+InitWaveVars_4:
+  ld (hl),a		; set Y velocity
+  inc hl
+  ex de,hl
+; continue the loop
+  pop bc
+  dec b
+  jp nz,InitWaveVars_1
+
   ret
 
 ; Center Ship On Screen
