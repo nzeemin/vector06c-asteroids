@@ -11,11 +11,11 @@ Start:
 ; Drawing two text strings under the title screen
   ld hl,$A01C
   ld (TextAddr),hl
-  ld hl,String
+  ld hl,STitle1
   call DrawString
   ld hl,$A00C
   ld (TextAddr),hl
-  ld hl,String2
+  ld hl,STitle2
   call DrawString
 
   call WaitAnyKey
@@ -35,102 +35,6 @@ InitWaves:
 
   ld a,1
   ld (ShipStatus),a	;TEST: activate the ship
-;   ld a,20
-;   ld (AstObjects),a	;TEST: activate the rock
-;   ld hl,500
-;   ld (AstObjects+2),hl	;TEST: set the rock X
-;   ld (AstObjects+4),hl	;TEST: set the rock Y
-;   ld a,7
-;   ld (AstObjects+6),a  ;TEST: set the rock dX
-;   ld (AstObjects+7),a  ;TEST: set the rock dY
-;   ld a,1
-;   ld (AstObjects+8),a	;TEST: activate the rock
-;   ld hl,100
-;   ld (AstObjects+8+2),hl  ;TEST: set the rock X
-;   ld hl,1600
-;   ld (AstObjects+8+4),hl  ;TEST: set the rock Y
-;   ld a,10
-;   ld (AstObjects+8+6),a  ;TEST: set the rock dX
-;   ld (AstObjects+8+7),a  ;TEST: set the rock dY
-;   ld a,1
-;   ld (AstObjects+16),a	;TEST: activate the rock
-;   ld hl,1800
-;   ld (AstObjects+16+2),hl  ;TEST: set the rock X
-;   ld (AstObjects+16+4),hl  ;TEST: set the rock Y
-;   ld a,12
-;   ld (AstObjects+16+6),a  ;TEST: set the rock dX
-;   ld (AstObjects+16+7),a  ;TEST: set the rock dY
-;   ld a,1
-;   ld (AstObjects+32),a	;TEST: activate the rock
-;   ld hl,1900
-;   ld (AstObjects+32+2),hl  ;TEST: set the rock X
-;   ld hl,600
-;   ld (AstObjects+32+4),hl  ;TEST: set the rock Y
-;   ld a,1
-;   ld (AstObjects+40),a	;TEST: activate the rock
-;   ld hl,300
-;   ld (AstObjects+40+2),hl  ;TEST: set the rock X
-;   ld hl,1850
-;   ld (AstObjects+40+4),hl  ;TEST: set the rock Y
-;   ld a,5
-;   ld (AstObjects+40+6),a  ;TEST: set the rock dX
-;   ld (AstObjects+40+7),a  ;TEST: set the rock dY
-;   ld a,1
-;   ld (AstObjects+48),a	;TEST: activate the rock
-;   ld hl,1200
-;   ld (AstObjects+48+2),hl  ;TEST: set the rock X
-;   ld hl,200
-;   ld (AstObjects+48+4),hl  ;TEST: set the rock Y
-;   ld a,1
-;   ld (AstObjects+56),a	;TEST: activate the rock
-;   ld hl,600
-;   ld (AstObjects+56+2),hl  ;TEST: set the rock X
-;   ld a,1
-;   ld (AstObjects+64),a	;TEST: activate the rock
-;   ld hl,2400
-;   ld (AstObjects+64+2),hl  ;TEST: set the rock X
-;   ld hl,1400
-;   ld (AstObjects+64+4),hl  ;TEST: set the rock Y
-;   ld a,1
-;   ld (AstObjects+72),a	;TEST: activate the rock
-;   ld hl,2200
-;   ld (AstObjects+72+2),hl  ;TEST: set the rock X
-;   ld hl,400
-;   ld (AstObjects+72+4),hl  ;TEST: set the rock Y
-;   ld a,128
-;   ld (ShipShotObjects+0),a  ;TEST: activate the bullet
-;   ld a,20
-;   ld (ShipShotObjects+0+6),a  ;TEST: set the bullet dX
-;   ld (ShipShotObjects+0+7),a  ;TEST: set the bullet dY
-;   ld a,128
-;   ld (ShipShotObjects+8),a  ;TEST: activate the bullet
-;   ld hl,1366
-;   ld (ShipShotObjects+8+2),hl  ;TEST: set the bullet X
-;   ld (ShipShotObjects+8+4),hl  ;TEST: set the bullet Y
-;   ld a,20
-;   ld (ShipShotObjects+8+7),a  ;TEST: set the bullet dY
-;   ld a,128
-;   ld (ShipShotObjects+16),a  ;TEST: activate the bullet
-;   ld hl,1366
-;   ld (ShipShotObjects+16+2),hl  ;TEST: set the bullet X
-;   ld hl,1200
-;   ld (ShipShotObjects+16+4),hl  ;TEST: set the bullet Y
-;   ld a,20
-;   ld (ShipShotObjects+16+7),a  ;TEST: set the bullet dY
-;   ld a,128
-;   ld (ShipDebrisObjects+0),a  ;TEST: activate the debris
-;   ld (ShipDebrisObjects+8),a  ;TEST: activate the debris
-;   ld (ShipDebrisObjects+16),a  ;TEST: activate the debris
-;   ld (ShipDebrisObjects+24),a  ;TEST: activate the debris
-;   ld hl,1200
-;   ld (ShipDebrisObjects+0+2),hl  ;TEST: set the debris X
-;   ld (ShipDebrisObjects+0+4),hl  ;TEST: set the debris Y
-;   ld (ShipDebrisObjects+8+2),hl  ;TEST: set the debris X
-;   ld (ShipDebrisObjects+8+4),hl  ;TEST: set the debris Y
-;   ld (ShipDebrisObjects+16+2),hl  ;TEST: set the debris X
-;   ld (ShipDebrisObjects+16+4),hl  ;TEST: set the debris Y
-;   ld (ShipDebrisObjects+24+2),hl  ;TEST: set the debris X
-;   ld (ShipDebrisObjects+24+4),hl  ;TEST: set the debris Y
 
 ; Game loop start
 Start_1:
@@ -155,11 +59,16 @@ Start_1:
   call ReadKeyboard
   call ProcessKeyboard
 
-  ld a,(ThrustSw)
-  or a
-  call nz,DoShipExplosion	; TEST
+;TODO: if game mode
+  call UpdateShip		; Update ship firing
+;TODO: end if game mode
 
-  call UpdateObjects
+  ;ld a,(ThrustSw)
+  ;or a
+  ;call nz,DoShipExplosion	; TEST
+
+  call UpdateObjects		; Update position for all objects
+;TODO: call HitDectection
 
   call ClearPlane0
 
@@ -173,14 +82,23 @@ Start_1:
   halt
   jp Start_1		; continue the game loop
 
+LastIntCount: db 0
+
+STitle1:	DEFM " ORIGINAL GAME 1979 ATARI INC",0
+STitle2:	DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0
+SGameOver:	DEFM "GAME OVER",0
+
 ProcessKeyboard:
-  rra			; bit 0 - if Fire pressed
-;TODO: process Fire
+  ld c,a
+  and 1			; bit 0 - if Fire pressed
+  ld (FireSw),a		; save the fire key status
+  ld a,c
+  rra
   rra			; bit 1 - if Left pressed
   jp nc,ProcessKeyboard_1
   ld c,a
   ld a,(ShipDir)
-  dec a
+  dec a			; rotate left
   and $1F
   ld (ShipDir),a
   ld a,c
@@ -189,7 +107,7 @@ ProcessKeyboard_1:
   jp nc,ProcessKeyboard_2
   ld c,a
   ld a,(ShipDir)
-  inc a
+  inc a			; rotate right
   and $1F
   ld (ShipDir),a
   ld a,c
@@ -205,19 +123,19 @@ ProcessKeyboard_2:
 ;TODO
   ret
 
-LastIntCount: db 0
-String:  DEFM " ORIGINAL GAME 1979 ATARI INC",0
-String2: DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0
-SGameOver:  DEFM "GAME OVER",0
+UpdateShip:
+;TODO: if FireSw
+  ret
 
 ;----------------------------------------------------------------------------
 AstroCodeBeg:
 
 ThrustSw:		db	0
 HyprSpcSw:		db	0
+FireSw:			db	0	; Fire button status
 
 NumPlayers:		db	0	; 0 = Not playing, 1 = In the Game
-PlayerScore:		db	$34,$12	; Player score as two BCD bytes
+PlayerScore:		db	0,0	; Player score as two BCD bytes
 ShipsPerGame:		db	3
 PlayerShips:		db	3	; Current number of player ships
 ShpShotTimer:		db	0
@@ -299,7 +217,7 @@ ShipDebrisObjects:	db	0, $87, 0,0,0,0, 0,-2
 
 ; Initialize Game Variables
 InitGameVars:
-  ld a,23;TEST		; Prepare to start wave 1 with 4 asteroids (+2 later).
+  ld a,4		; Prepare to start wave 1 with 4 asteroids (+2 later).
   ld (AstPerWave),a
 InitShipsPerGame:
   xor a
@@ -324,7 +242,7 @@ DrawObjects_1:
   ld a,(hl)		; get object type
   push af		; store object type
   inc hl		; now HL points to the object coords
-  call CalculateScreenAddr
+  call CalcScreenAddr
   ex de,hl		; now DE = screen address
   ld (DrawObjects_2+1),a  ; store the shift
 ; calculate draw procedure address
@@ -466,8 +384,15 @@ DrawRockMProc:
   ret
 
 DrawRockLProc:
-  ld hl,DrawRockLAddrs	; table address
   add a,a
+  ld c,a		; save shift * 2
+  inc hl		; now HL = object record + 1, at Type
+  ld a,(hl)		; get type/subtype
+  rra
+  rra			; subtype bits 6..7 -> bits 4..5
+  and $30
+  or c			; now A = draw procedure number * 2
+  ld hl,DrawRockLAddrs	; table address
   add a,l
   ld l,a
   jp nc,DrawRockLProc_1
@@ -482,6 +407,12 @@ DrawRockLProc_1:	; now HL = address in the table
 DrawRockLAddrs:
   dw	DrawRockL0S0, DrawRockL0S1, DrawRockL0S2, DrawRockL0S3
   dw	DrawRockL0S4, DrawRockL0S5, DrawRockL0S6, DrawRockL0S7
+  dw	DrawRockL1S0, DrawRockL1S1, DrawRockL1S2, DrawRockL1S3
+  dw	DrawRockL1S4, DrawRockL1S5, DrawRockL1S6, DrawRockL1S7
+  dw	DrawRockL2S0, DrawRockL2S1, DrawRockL2S2, DrawRockL2S3
+  dw	DrawRockL2S4, DrawRockL2S5, DrawRockL2S6, DrawRockL2S7
+  dw	DrawRockL3S0, DrawRockL3S1, DrawRockL3S2, DrawRockL3S3
+  dw	DrawRockL3S4, DrawRockL3S5, DrawRockL3S6, DrawRockL3S7
 
 DrawShrapnelProc:
   ld c,a		; save shift
@@ -576,29 +507,10 @@ Multiply96Base:
   add hl,bc
   ret
 
-; Multiply A by 128; A = 0..7, HL = base address
-; Result: HL = base address + A * 128
-Multiply128:
-  push hl		; store base address
-  and 7
-  add a,a
-  ld c,a
-  ld b,0
-  ld hl,TableMul128
-  add hl,bc		; now HL = address in the table
-  ld c,(hl)		; get lo
-  inc hl
-  ld b,(hl)		; get hi; now BC = A * 128
-  pop hl		; restore base address
-  add hl,bc
-  ret
-
 TableMul48:
 	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
 TableMul96:
 	dw	0, 96, 96*2, 96*3, 96*4, 96*5, 96*6, 96*7
-TableMul128:
-	dw	0, 128, 128*2, 128*3, 128*4, 128*5, 128*6, 128*7
 TableMul384:
 	dw	384*0,  384*1,  384*2,  384*3,  384*4,  384*5,  384*6,  384*7
 	dw	384*8,  384*9,  384*10, 384*11, 384*12, 384*13, 384*14, 384*15
@@ -612,16 +524,16 @@ TableMul384:
 ; Returns:
 ;   HL = screen address
 ;   A = shift 0..7
-CalculateScreenAddr:
+CalcScreenAddr:
 ; calculate address for X,Y-shifts for the object
   and 7			; object type 0..7
   add a,a
   ld de,DrawObjsXYShift	; table address
   add a,e
   ld e,a
-  jp nc,CalculateScreenAddr_1
+  jp nc,CalcScreenAddr_1
   inc d
-CalculateScreenAddr_1:	; now DE = address for X,Y-shifts
+CalcScreenAddr_1:	; now DE = address for X,Y-shifts
   push de		; save the address
 ; get X position
   ld e,(hl)		; get X lo
@@ -827,7 +739,7 @@ InitWaveVars_1:
   push bc
   ld a,1		; 1 = active
   ld (de),a		; set asteroid state to Active
-  inc de
+  inc de		; now DE = object record + 1
 ; set type and X position
   call Random16		; get HL = random number
   ex de,hl		; now HL = object record + 1, DE = random number
@@ -855,7 +767,7 @@ InitWaveVars_1:
   ld (hl),a		; set asteroid Y hi
   inc hl
   ex de,hl
-;TODO: set speed X,Y
+; set X,Y velocity
   call Random16		; get HL = random number
   ex de,hl		; now HL = object record + 6, DE = random number
   ld a,e
@@ -877,7 +789,6 @@ InitWaveVars_4:
   pop bc
   dec b
   jp nz,InitWaveVars_1
-
   ret
 
 ; Center Ship on the screen
@@ -1332,6 +1243,8 @@ ShotSprite:	db	$80,$40,$20,$10,$08,$04,$02,$01
 AstroSpriteMid:
 INCLUDE "astrosprt.asm"
 AstroSpriteEnd:
+
+AstroXSpaceTil8000 EQU $8000 - AstroSpriteEnd
 
   ORG $A000
 INCLUDE "astrotscr.asm"
