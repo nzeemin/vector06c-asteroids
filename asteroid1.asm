@@ -236,6 +236,7 @@ CurAsteroids:		db	0
 ; + 4-5:    Y position
 ; + 6:      X speed
 ; + 7:      Y speed
+MaxObjects EQU 38
 Objects:		; Total 38 object records
 ; Ship object record
 ShipStatus:		db	0	; 0=No Ship Or In Hyperspace, 1=Alive, $A0-FF=Ship Exploding
@@ -252,13 +253,14 @@ ScrYPos:		dw	0
 SaucerXSpeed:		db	0
 SaucerYSpeed:		db	0
 ; Asteroid object records, 26 records
+MaxAsteroids EQU 26
 AstObjects:		db	0, 4, 0,0,0,0, 0,0
 			db	0, 4, 0,0,0,0, 0,0
-			db	0, $83, 0,0,0,0, 0,0
-			db	0, $C3, 0,0,0,0, 0,0
-			db	0, $82, 0,0,0,0, 0,0
-			db	0, $C2, 0,0,0,0, 0,0
-			db	0, $42, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
+			db	0, 3, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
 			db	0, 3, 0,0,0,0, 0,0
@@ -309,7 +311,7 @@ InitShipsPerGame:
   ret
 
 DrawObjects:
-  ld b,38		; number of objects
+  ld b,MaxObjects	; number of objects
   ld hl,Objects
 DrawObjects_1:
   ld a,(hl)		; get status byte
@@ -366,7 +368,7 @@ DrawProcTable:
   dw DrawShrapnelProc	; 6 - shrapnel
   dw DrawDebrisProc	; 7 - debris
 
-DrawObjsXShift:
+DrawObjsXYShift:
   db 8, 8		; 0 - ship
   db 8, 7		; 1 - sauser
   db 4, 4		; 2 - S-size rock
@@ -603,7 +605,7 @@ CalculateScreenAddr:
 ; calculate address for X,Y-shifts for the object
   and 7			; object type 0..7
   add a,a
-  ld de,DrawObjsXShift
+  ld de,DrawObjsXYShift	; table address
   add a,e
   ld e,a
   jp nc,CalculateScreenAddr_1
@@ -693,8 +695,9 @@ CalculateScreenAddr_1:	; now DE = address for X,Y-shifts
   and 7			; keep 0..7 shift value
   ret
 
+; Update all objetcs
 UpdateObjects:
-  ld b,38		; number of objects
+  ld b,MaxObjects	; number of objects
   ld hl,Objects
 UpdateObjects_1:
   ld a,(hl)		; get status byte
@@ -866,7 +869,7 @@ InitWaveVars_4:
 
   ret
 
-; Center Ship On Screen
+; Center Ship on the screen
 CenterShip:
   ld hl,1366
   ld (ShipXPos),hl
@@ -877,6 +880,55 @@ CenterShip:
   ld (hl),a
   inc hl
   ld (hl),a
+  ret
+
+; Split the asteroid, only for M/L-sized rocks
+;   HL = asteroid object record
+BreakAsteroid:
+;TODO
+  call GetFreeAstSlot
+;TODO
+  ret
+
+; Find a free asteroid slot
+; Returns: Z=1 - slot found, HL = object record address;
+;          Z=0 - no empty slots
+GetFreeAstSlot:
+  ld hl,AstObjects	; address to start from
+  ld de,$0008		; object record size
+  ld b,MaxAsteroids	; number of asteroid object slots
+GetFreeAstSlot_1:
+  ld a,(hl)
+  or a
+  ret z			; found the empty slot; Z=1
+  add hl,de		; next object record
+  dec b
+  jp nz,GetFreeAstSlot_1
+  or a			; set Z=0
+  ret
+
+; Mark the ship not active; activate four debris objects;
+; copy ship X,Y position to each debris object X,Y
+DoShipExplosion:
+  xor a
+  ld (ShipStatus),a	; set not active
+  ld bc,$0420		; B = number of debris objects, C = status value for debris objects
+  ld hl,ShipDebrisObjects
+DoShipExplosion_1:
+  ld (hl),c		; set status value
+  inc hl
+  inc hl		; now HL = debris object + 2, at X lo
+  ld de,ShipXPos	; start address for copying
+REPT 4			; copy 4 bytes
+  ld a,(de)
+  inc de
+  ld (hl),a
+  inc hl
+ENDM
+  inc hl
+  inc hl		; now HL points to the next object record
+  dec b
+  jp nz,DoShipExplosion_1
   ret
 
 DrawPlayerScore:
@@ -918,6 +970,7 @@ DrawNumberString:
   ld a,$30
   call DrawChar
   ret
+; Draw BCD number as string "NN", maximum is "99"
 DrawNumberBcdByteString:
   ld c,a
   rra
@@ -931,30 +984,6 @@ DrawNumberBcdByteString:
   and $0F
   add a,$30
   call DrawChar
-  ret
-
-; Mark the ship not active; activate four debris objects;
-; copy ship X,Y position to each debris object X,Y
-DoShipExplosion:
-  xor a
-  ld (ShipStatus),a	; set not active
-  ld bc,$0420		; B = number of debris objects, C = status value for debris objects
-  ld hl,ShipDebrisObjects
-DoShipExplosion_1:
-  ld (hl),c		; set status value
-  inc hl
-  inc hl		; now HL = debris object + 2, at X lo
-  ld de,ShipXPos	; start address for copying
-REPT 4			; copy 4 bytes
-  ld a,(de)
-  inc de
-  ld (hl),a
-  inc hl
-ENDM
-  inc hl
-  inc hl		; now HL points to the next object record
-  dec b
-  jp nz,DoShipExplosion_1
   ret
 
 ;----------------------------------------------------------------------------
@@ -1017,6 +1046,8 @@ ReadKeyboard_map:
   DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US
   DW KeyLine0
   DB $00,$04,$08,$02,$01,$20,$20,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
+
+;----------------------------------------------------------------------------
 
 TextAddr:  DW  $A0FF  ; Address on the screen to draw next char
 
