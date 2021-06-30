@@ -24,9 +24,6 @@ Start:
   call ClearPlane012	; Clear the whole screen
   call SetPaletteGame0
 
-  ld A,(CurrentPlaneHi)
-  call SwitchToPlane
-
 InitGame:
   call InitGameVars	; Initialize various game variables
   call CenterShip	; Center ship on display and zero velocity
@@ -48,6 +45,9 @@ Start_1:
   ld a,(LastIntCount)
   add a,$30		; '0'
   call DrawChar		; show frame count
+
+  ld A,(CurrentPlaneHi)
+  call SwitchToPlane
 ; Clear the working plane
   ld A,(CurrentPlaneHi)
   call ClearPlaneA
@@ -74,10 +74,6 @@ Start_1:
 
   call DrawObjects
 
-; Switch working plane
-  ld a,(CurrentPlaneHi)
-  xor $20
-  ld (CurrentPlaneHi),a
 ; Save interrupt counter value
   ld a,(IntCount)
   ld (LastIntCount),a
@@ -85,6 +81,10 @@ Start_1:
   ld (IntCount),a
 ;  ei
 ;  halt
+; Switch working plane
+  ld a,(CurrentPlaneHi)
+  xor $20
+  ld (CurrentPlaneHi),a
 ; Set palette to show already drawn plane
   and $20
   jp z, Start_2		; new plane is $C000 => jump
@@ -95,7 +95,7 @@ Start_2:
   jp Start_1		; continue the game loop
 
 LastIntCount:	db 0
-CurrentPlaneHi:	db $E0	; Current plane address hi byte
+CurrentPlaneHi:	db $C0	; Current plane address hi byte
 
 STitle1:	DEFM " ORIGINAL GAME 1979 ATARI INC",0
 STitle2:	DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0

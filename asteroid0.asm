@@ -128,40 +128,16 @@ ColorGame .equ 11111110b    ; Color for game
 ColorText .equ 10111111b    ; Color for text
 ColorBoth .equ 11111111b    ; Color for game and text
 ; Palette colors, game
-PaletteGame0:		; Palette for Plane 0 + Plane 2
-	.db	ColorNone	;0
-	.db	ColorGame	;1
-	.db	ColorNone	;2
-	.db	ColorGame	;3
-	.db	ColorText	;4
-	.db	ColorBoth	;5
-	.db	ColorText	;6
-	.db	ColorBoth	;7
-	.db	ColorNone	;8
-	.db	ColorGame	;9
-	.db	ColorNone	;10
-	.db	ColorGame	;11
-	.db	ColorText	;12
-	.db	ColorBoth	;13
-	.db	ColorText	;14
-	.db	ColorBoth	;15
-PaletteGame1:		; Palette for Plane 1 + Plane 2
-	.db	ColorNone	;0
-	.db	ColorNone	;1
-	.db	ColorGame	;2
-	.db	ColorGame	;3
-	.db	ColorText	;4
-	.db	ColorText	;5
-	.db	ColorBoth	;6
-	.db	ColorBoth	;7
-	.db	ColorNone	;8
-	.db	ColorNone	;9
-	.db	ColorGame	;10
-	.db	ColorGame	;11
-	.db	ColorText	;12
-	.db	ColorText	;13
-	.db	ColorBoth	;14
-	.db	ColorBoth	;15
+PaletteGame0:		; Palette for Plane 0 game + Plane 2 text
+	.db	ColorNone, ColorGame, ColorNone, ColorGame	; 0..3
+	.db	ColorText, ColorBoth, ColorText, ColorBoth	; 4..7
+	.db	ColorNone, ColorGame, ColorNone, ColorGame	; 8..11
+	.db	ColorText, ColorBoth, ColorText, ColorBoth	; 12..15
+PaletteGame1:		; Palette for Plane 1 game + Plane 2 text
+	.db	ColorNone, ColorNone, ColorGame, ColorGame	; 0..3
+	.db	ColorText, ColorText, ColorBoth, ColorBoth	; 4..7
+	.db	ColorNone, ColorNone, ColorGame, ColorGame	; 8..11
+	.db	ColorText, ColorText, ColorBoth, ColorBoth	; 12..15
 ; Palette colors, title screen
 PaletteTitle:
 	.db	$00	;0
