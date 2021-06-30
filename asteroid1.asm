@@ -42,18 +42,15 @@ InitWaves:
 
 ; Game loop start
 Start_1:
-;  ld hl,12345
-;  ld (Random16_seed1),hl
-;  ld hl,54321
-;  ld (Random16_seed2),hl
-
-;  di
 ; Show frame count at right-top corner
   ld hl,$BFFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
   add a,$30		; '0'
   call DrawChar		; show frame count
+; Clear the working plane
+  ld A,(CurrentPlaneHi)
+  call ClearPlaneA
 
 ;  ld hl,$BDFF
 ;  ld (TextAddr),hl
@@ -75,17 +72,26 @@ Start_1:
   call UpdateObjects		; Update position for all objects
 ;TODO: call HitDectection
 
-  ld A,(CurrentPlaneHi)
-  call ClearPlaneA
-
   call DrawObjects
 
+; Switch working plane
+  ld a,(CurrentPlaneHi)
+  xor $20
+  ld (CurrentPlaneHi),a
+; Save interrupt counter value
   ld a,(IntCount)
   ld (LastIntCount),a
   xor a
   ld (IntCount),a
-  ei
-  halt
+;  ei
+;  halt
+; Set palette to show already drawn plane
+  and $20
+  jp z, Start_2		; new plane is $C000 => jump
+  call SetPaletteGame1
+  jp Start_1		; continue the game loop
+Start_2:
+  call SetPaletteGame0
   jp Start_1		; continue the game loop
 
 LastIntCount:	db 0
@@ -1052,7 +1058,7 @@ ClearPlane:
   ld (ClearPlane_fin+1),hl
   ld b,$10
 ClearPlane_0:
-  ld sp,$0000
+  ld sp,$0000		; mutable parameter
 ClearPlane_1:
 REPT 256
   push de
@@ -1060,7 +1066,7 @@ ENDM
   dec b
   jp nz,ClearPlane_1
 ClearPlane_fin:
-  ld sp,0
+  ld sp,$0000		; mutable parameter
   ret
 
 ;Inputs:
