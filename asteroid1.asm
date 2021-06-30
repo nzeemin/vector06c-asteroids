@@ -54,9 +54,9 @@ Start_1:
 
 ;  ld hl,$BDFF
 ;  ld (TextAddr),hl
-;  ld a,(ThrustSw)
+;  ld a,(FireSw)
 ;  add a,$30		; '0'
-;  call DrawChar		; show ThrustSw
+;  call DrawChar		; show FireSw
 
   call ReadKeyboard
   call ProcessKeyboard
@@ -137,8 +137,82 @@ ProcessKeyboard_2:
   ret
 
 UpdateShip:
-;TODO: if FireSw
+  ld a,(FireSw)
+  or a
+  ret z
+;TODO: shift ShipBulletSR and check
+; Find an empty bullet slot
+  ld hl,ShipShotObjects
+  ld b,1;TEST		; ship bullets max
+  ld de,$0008		; object record size
+UpdateShip_1:
+  ld a,(hl)		; check the status
+  or a
+  jp z,UpdateShip_2	; inactive => use the slot
+  add hl,de		; next record
+  dec b
+  jp nz,UpdateShip_1	; continue the loop
+  ret			; no free bullet slots => exit
+UpdateShip_2:		; found free slot, HL = object record
+; Create new bullet
+  ld a,32		; active status + bullet timer value
+  ld (hl),a		; activate the bullet
+  inc hl
+  inc hl		; now HL = object record + 2, at X lo
+  ld de,ShipXPos
+  ld a,(de)		; get X lo
+  ld (hl),a		; set X lo
+  inc de
+  inc hl
+  ld a,(de)		; get X hi
+  ld (hl),a		; set X hi
+  inc de
+  inc hl
+  ld a,(de)		; get Y lo
+  ld (hl),a		; set Y lo
+  inc de
+  inc hl
+  ld a,(de)		; get Y hi
+  ld (hl),a		; set Y hi
+  inc hl
+  call GetShipDirSinCos
+  ld a,c		; get Cos(ShipDir)
+  ld (hl),a		; set X speed
+  inc hl
+  ld a,b		; get Sin(ShipDir)
+  ld (hl),a		; set Y speed
   ret
+
+GetShipDirSinCos:
+  push hl
+; Get Sin(ShipDir)
+  ld a,(ShipDir)
+  ld c,a		; save it for later
+  ld hl,SineTbl
+  add a,l
+  ld l,a
+  jp nc,GetShipDirSinCos_1
+  inc h
+GetShipDirSinCos_1:
+  ld b,(hl)
+; Get Cos(ShipDir)
+  ld a,c		; restore ShipDir
+  sub 8
+  and $1F		; keep 0..31 value
+  ld hl,SineTbl
+  add a,l
+  ld l,a
+  jp nc,GetShipDirSinCos_2
+  inc h
+GetShipDirSinCos_2:
+  ld c,(hl)
+  pop hl
+  ret
+
+; ShipDir to Sine table
+SineTbl:
+  db	0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12
+  db	0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12
 
 ;----------------------------------------------------------------------------
 AstroCodeBeg:
@@ -152,7 +226,7 @@ PlayerScore:		db	0,0	; Player score as two BCD bytes
 ShipsPerGame:		db	3
 PlayerShips:		db	3	; Current number of player ships
 ShpShotTimer:		db	0
-ShipDir:		db	8	; Ship direction
+ShipDir:		db	8	; Ship direction 0..31; 0 = W, 8 = N, 16 = E, 24 = S
 ShipXAccel:		db	0
 ShipYAccel:		db	0
 ScrTimer:		db	0	; Countdown timer for saucer spawn

@@ -19,6 +19,7 @@ namespace SpriteRotate
             //PrepareSpritesImage();
             PrepareSpritesText();
             PrepareTitleScreen();
+            PrepareSineTable();
         }
 
         static void PrepareFont()
@@ -131,6 +132,28 @@ namespace SpriteRotate
                 WriteByteArray(planes[1], writer);
                 writer.WriteLine("TitleScreen0:");
                 WriteByteArray(planes[0], writer);
+            }
+
+            Console.WriteLine($"{outfilename} saved");
+        }
+
+        static void PrepareSineTable()
+        {
+            const string outfilename = "astrosine.asm";
+            using (var writer = new StreamWriter(outfilename))
+            {
+                writer.WriteLine("SineTbl:");
+                for (int dir = 0; dir < 32; dir++)
+                {
+                    if (dir % 16 == 0)
+                        writer.Write("  db\t");
+                    var v = Math.Round(Math.Sin(Math.PI / 16.0 * dir) * 64.0, MidpointRounding.AwayFromZero);
+                    if (dir % 16 > 0)
+                        writer.Write(",");
+                    writer.Write(v);
+                    if (dir % 16 == 15)
+                        writer.WriteLine();
+                }
             }
 
             Console.WriteLine($"{outfilename} saved");
