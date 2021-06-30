@@ -4,9 +4,9 @@
 
 ;----------------------------------------------------------------------------
 
-  ORG $0280
+  ORG $0240
 Start:
-  ld sp,$0100
+;  ld sp,$0100
 
 ; Drawing two text strings under the title screen
   ld hl,$A01C
@@ -19,7 +19,6 @@ Start:
   call DrawString
 ; Waiting on the title screen
   call WaitAnyKey
-;TODO: Increment random seeds while we're waiting
 
   call ClearPlane012	; Clear the whole screen
   call SetPaletteGame0
@@ -39,13 +38,13 @@ InitWaves:
 
 ; Game loop start
 Start_1:
-; Show frame count at right-top corner
+;DEBUG: Show frame count at right-top corner
   ld hl,$BFFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
   add a,$30		; '0'
   call DrawChar		; show frame count
-
+; Tune procedures for the working plane
   ld A,(CurrentPlaneHi)
   call SwitchToPlane
 ; Clear the working plane
@@ -79,8 +78,6 @@ Start_1:
   ld (LastIntCount),a
   xor a
   ld (IntCount),a
-;  ei
-;  halt
 ; Switch working plane
   ld a,(CurrentPlaneHi)
   xor $20
@@ -137,13 +134,23 @@ ProcessKeyboard_2:
   ret
 
 UpdateShip:
+; Check ShipBulletSR counter first
+  ld a,(ShipBulletSR)
+  or a
+  jp z,UpdateShip_0
+  dec a
+  ld (ShipBulletSR),a
+  ret
+UpdateShip_0:
   ld a,(FireSw)
   or a
   ret z
-;TODO: shift ShipBulletSR and check
+; Fire key pressed - creating new bullet
+  ld a,8		; counter initial value
+  ld (ShipBulletSR),a
 ; Find an empty bullet slot
   ld hl,ShipShotObjects
-  ld b,1;TEST		; ship bullets max
+  ld b,4		; ship bullets max
   ld de,$0008		; object record size
 UpdateShip_1:
   ld a,(hl)		; check the status
@@ -155,7 +162,7 @@ UpdateShip_1:
   ret			; no free bullet slots => exit
 UpdateShip_2:		; found free slot, HL = object record
 ; Create new bullet
-  ld a,32		; active status + bullet timer value
+  ld a,28		; active status + bullet timer value
   ld (hl),a		; activate the bullet
   inc hl
   inc hl		; now HL = object record + 2, at X lo
@@ -227,6 +234,7 @@ ShipsPerGame:		db	3
 PlayerShips:		db	3	; Current number of player ships
 ShpShotTimer:		db	0
 ShipDir:		db	8	; Ship direction 0..31; 0 = W, 8 = N, 16 = E, 24 = S
+ShipBulletSR:		db	0	; Counter to limit ship fire rate
 ShipXAccel:		db	0
 ShipYAccel:		db	0
 ScrTimer:		db	0	; Countdown timer for saucer spawn
@@ -1003,18 +1011,17 @@ WaitAnyKey:
   call ReadKeyboard
   or a
   jp nz,WaitAnyKey	; Wait for unpress
-WaitAnyKey_1:
+WaitAnyKey_1:		; Wait for key press
   call ReadKeyboard
   or a
-  jp z,WaitAnyKey_1	; Wait for press
-  ret
-
-; Wait until no key pressed - to put after ReadKeyboard calls to prevent double-reads of the same key
-WaitKeyUp:
-  call ReadKeyboard
-  or a
-  jp nz,WaitKeyUp	; Wait for unpress
-  ret
+  ret nz		; pressed => return
+; Increment the random seed
+  ld hl,Random16_seed1
+  inc (hl)		; increment lo
+  jp nc,WaitAnyKey_1
+  inc hl
+  inc (hl)		; increment hi
+  jp WaitAnyKey_1	; Wait for press
 
 ; Returns: A=key code, $00 no key; Z=0 for key, Z=1 for no key
 ; Key codes: Fire=$01, Left=$02, Right=$04, Thrust=$08, Hyper=$10, Enter/Esc=$20

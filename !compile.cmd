@@ -2,9 +2,9 @@
 if exist asteroids.rom del asteroids.rom
 if exist asteroid0.bin del asteroid0.bin
 if exist asteroid0.inc del asteroid0.inc
-if exist asteroide.bin del asteroide.bin
-if exist asteroide.txt del asteroide.txt
-if exist asteroide.lzsa del asteroide.lzsa
+if exist asteroid1.bin del asteroid1.bin
+if exist asteroid1.txt del asteroid1.txt
+if exist asteroid1.lzsa del asteroid1.lzsa
 
 rem Define ESCchar to use in ANSI escape sequences
 rem https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line
@@ -28,6 +28,10 @@ tools\pasmo --w8080 asteroid1.asm asteroid1.bin asteroid1.txt
 findstr /B "Astro" asteroid1.txt
 
 dir /-c asteroid1.bin|findstr /R /C:"asteroid1.bin"
+
+tools\lzsa.exe -f1 -r -c asteroid1.bin asteroid1.lzsa
+
+dir /-c asteroid1.lzsa|findstr /R /C:"asteroid1.lzsa"
 
 copy /b asteroid0.bin+asteroid1.bin asteroids.rom >nul
 

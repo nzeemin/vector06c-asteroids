@@ -1,7 +1,7 @@
 
 ;----------------------------------------------------------------------------
 
-Start	.equ	280h
+Start	.equ	240h
 
 	.EXPORT KeyLineEx, KeyLine0
 	.EXPORT IntCount, SetPaletteGame0, SetPaletteGame1
@@ -43,7 +43,9 @@ Start	.equ	280h
 ; 	lxi	d,Start
 ; 	call	unlzsa1
 
-	call	SetPaletteTitle
+; Set palette for the title screen
+	lxi	h, PaletteTitle+15
+	call	SetPalette
 
 Restart:
 	lxi	sp,100h
@@ -59,9 +61,6 @@ SetPaletteGame0:
 	jp	SetPalette
 SetPaletteGame1:
 	lxi	h, PaletteGame1+15
-	jp	SetPalette
-SetPaletteTitle:
-	lxi	h, PaletteTitle+15
 SetPalette:
 	ei
 	hlt
