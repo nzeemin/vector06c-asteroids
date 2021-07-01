@@ -48,7 +48,7 @@ Start_1:
   ld A,(CurrentPlaneHi)
   call SwitchToPlane
 ; Clear the working plane
-  ld A,(CurrentPlaneHi)
+  ld a,(CurrentPlaneHi)
   call ClearPlaneA
 
 ;  ld hl,$BDFF
@@ -61,7 +61,7 @@ Start_1:
   call ProcessKeyboard
 
 ;TODO: if game mode
-  call UpdateShip		; Update ship firing
+  call UpdateShipFire		; Update ship firing
 ;TODO: end if game mode
 
   ;ld a,(ThrustSw)
@@ -83,6 +83,7 @@ Start_1:
   xor $20
   ld (CurrentPlaneHi),a
 ; Set palette to show already drawn plane
+;  ld a,(CurrentPlaneHi)
   and $20
   jp z, Start_2		; new plane is $C000 => jump
   call SetPaletteGame1
@@ -133,15 +134,15 @@ ProcessKeyboard_2:
 ;TODO
   ret
 
-UpdateShip:
+UpdateShipFire:
 ; Check ShipBulletSR counter first
   ld a,(ShipBulletSR)
   or a
-  jp z,UpdateShip_0
+  jp z,UpdateShipFire_1
   dec a
   ld (ShipBulletSR),a
   ret
-UpdateShip_0:
+UpdateShipFire_1:
   ld a,(FireSw)
   or a
   ret z
@@ -152,15 +153,15 @@ UpdateShip_0:
   ld hl,ShipShotObjects
   ld b,4		; ship bullets max
   ld de,$0008		; object record size
-UpdateShip_1:
+UpdateShipFire_2:
   ld a,(hl)		; check the status
   or a
-  jp z,UpdateShip_2	; inactive => use the slot
+  jp z,UpdateShipFire_3	; inactive => use the slot
   add hl,de		; next record
   dec b
-  jp nz,UpdateShip_1	; continue the loop
+  jp nz,UpdateShipFire_2; continue the loop
   ret			; no free bullet slots => exit
-UpdateShip_2:		; found free slot, HL = object record
+UpdateShipFire_3:	; found free slot, HL = object record
 ; Create new bullet
   ld a,28		; active status + bullet timer value
   ld (hl),a		; activate the bullet
@@ -249,8 +250,8 @@ CurAsteroids:		db	0
 ; + 4-5:    Y position
 ; + 6:      X speed
 ; + 7:      Y speed
-MaxObjects EQU 38
-Objects:		; Total 38 object records
+MaxObjects EQU 38	; Total 38 object records
+Objects:
 ; Ship object record
 ShipStatus:		db	0	; 0=No Ship Or In Hyperspace, 1=Alive, $A0-FF=Ship Exploding
 			db	0	; Type = Ship
@@ -265,7 +266,7 @@ ScrXPos:		dw	0
 ScrYPos:		dw	0
 SaucerXSpeed:		db	0
 SaucerYSpeed:		db	0
-; Asteroid object records, 26 records
+; Asteroid objects, 26 records
 MaxAsteroids EQU 26
 AstObjects:		db	0, 4, 0,0,0,0, 0,0
 			db	0, 4, 0,0,0,0, 0,0
@@ -306,7 +307,29 @@ ShipDebrisObjects:	db	0, $87, 0,0,0,0, 0,-2
 			db	0, $07, 0,0,0,0, -2,1
 			db	0, $07, 0,0,0,0, 2,-1
 			db	0, $87, 0,0,0,0, 2,2
-
+; End of the Objects array
+;
+; X,Y shifts from object's sprite left-top corner to the object center
+DrawObjsXYShift:
+  db	8, 8		; 0 - ship
+  db	8, 7		; 1 - sauser
+  db	4, 4		; 2 - S-size rock
+  db	8, 8		; 3 - M-size rock
+  db	12, 16		; 4 - L-size rock
+  db	0, 0		; 5 - ship or sauser bullets
+  db	8, 8		; 6 - shrapnel
+  db	4, 4		; 7 - debris
+;
+; Object's hit radius table to use in collision detection
+ObjectsHitRadius:
+  db	64		; 0 - ship
+  db	30		; 1 - sauser
+  db	32		; 2 - S-size rock
+  db	64		; 3 - M-size rock
+  db	127		; 4 - L-size rock
+  db	0		; 5 - ship or sauser bullets
+  db	0		; 6 - shrapnel
+  db	0		; 7 - debris
 
 ;----------------------------------------------------------------------------
 
@@ -380,16 +403,6 @@ DrawProcTable:
   dw DrawBulletProc	; 5 - ship or sauser bullets
   dw DrawShrapnelProc	; 6 - shrapnel
   dw DrawDebrisProc	; 7 - debris
-
-DrawObjsXYShift:
-  db 8, 8		; 0 - ship
-  db 8, 7		; 1 - sauser
-  db 4, 4		; 2 - S-size rock
-  db 8, 8		; 3 - M-size rock
-  db 12, 16		; 4 - L-size rock
-  db 0, 0		; 5 - ship or sauser bullets
-  db 8, 8		; 6 - shrapnel
-  db 4, 4		; 7 - debris
 
 ; For all draw procedures registers are:
 ; HL = object address, DE = screen address, A = shift 0..7
