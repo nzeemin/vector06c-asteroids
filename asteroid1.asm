@@ -23,6 +23,62 @@ Start:
   call ClearPlane012	; Clear the whole screen
   call SetPaletteGame0
 
+; ;TEST HitTest
+;   ld a,1
+;   ld (AstPerWave),a
+;   call InitWaveVars
+;   ld a,$E0
+;   ld (CurrentPlaneHi),a
+;   call SwitchToPlane
+
+;   ld b,8
+; Test_H0:
+;   push bc
+;   call UpdateObjects		; Update position for all objects
+;   call DrawObjects	; draw the asteroid
+;   ei
+;   halt
+;   ei
+;   halt
+;   pop bc
+;   dec b
+;   jp nz,Test_H0
+;   call ClearPlane012	; Clear the whole screen
+;   call DrawObjects	; draw the asteroid
+
+; Test_H1:
+;   ld a,1
+;   ld (ShipShotObjects),a
+; Test_H1R:
+;   call Random16
+;   ld a,h
+;   and $0F		; 0..$0FFF
+;   ld h,a
+;   ld de,$FAAB		; -$0555..$0AAA
+;   add hl,de
+;   jp m,Test_H1R		; less than 0 => repeat
+;   ld (ShipShotObjects+2),hl	; X
+;   call Random16
+;   ld a,h
+;   and 7
+;   ld h,a
+;   ld (ShipShotObjects+4),hl	; Y
+
+;   ld hl,AstObjects+2
+;   ld de,ShipShotObjects+2
+;   ld a,128
+;   call HitTest
+;   jp c,Test_H2
+;   ld a,$C0
+;   jp Test_H3
+; Test_H2:
+;   ld a,$A0
+; Test_H3:
+;   ld (CurrentPlaneHi),a
+;   call SwitchToPlane
+;   call DrawObjects
+;   jp Test_H1
+
 InitGame:
   call InitGameVars	; Initialize various game variables
   call CenterShip	; Center ship on display and zero velocity
@@ -69,7 +125,7 @@ Start_1:
   ;call nz,DoShipExplosion	; TEST
 
   call UpdateObjects		; Update position for all objects
-;TODO: call HitDectection
+  call HitDectection		; Collision detection
 
   call DrawObjects
 
@@ -133,94 +189,6 @@ ProcessKeyboard_2:
   and 4			; bit 5 - if Enter/Esc pressed
 ;TODO
   ret
-
-UpdateShipFire:
-; Check ShipBulletSR counter first
-  ld a,(ShipBulletSR)
-  or a
-  jp z,UpdateShipFire_1
-  dec a
-  ld (ShipBulletSR),a
-  ret
-UpdateShipFire_1:
-  ld a,(FireSw)
-  or a
-  ret z
-; Fire key pressed - creating new bullet
-  ld a,8		; counter initial value
-  ld (ShipBulletSR),a
-; Find an empty bullet slot
-  ld hl,ShipShotObjects
-  ld b,4		; ship bullets max
-  ld de,$0008		; object record size
-UpdateShipFire_2:
-  ld a,(hl)		; check the status
-  or a
-  jp z,UpdateShipFire_3	; inactive => use the slot
-  add hl,de		; next record
-  dec b
-  jp nz,UpdateShipFire_2; continue the loop
-  ret			; no free bullet slots => exit
-UpdateShipFire_3:	; found free slot, HL = object record
-; Create new bullet
-  ld a,28		; active status + bullet timer value
-  ld (hl),a		; activate the bullet
-  inc hl
-  inc hl		; now HL = object record + 2, at X lo
-  ld de,ShipXPos
-  ld a,(de)		; get X lo
-  ld (hl),a		; set X lo
-  inc de
-  inc hl
-  ld a,(de)		; get X hi
-  ld (hl),a		; set X hi
-  inc de
-  inc hl
-  ld a,(de)		; get Y lo
-  ld (hl),a		; set Y lo
-  inc de
-  inc hl
-  ld a,(de)		; get Y hi
-  ld (hl),a		; set Y hi
-  inc hl
-  call GetShipDirSinCos
-  ld a,c		; get Cos(ShipDir)
-  ld (hl),a		; set X speed
-  inc hl
-  ld a,b		; get Sin(ShipDir)
-  ld (hl),a		; set Y speed
-  ret
-
-GetShipDirSinCos:
-  push hl
-; Get Sin(ShipDir)
-  ld a,(ShipDir)
-  ld c,a		; save it for later
-  ld hl,SineTbl
-  add a,l
-  ld l,a
-  jp nc,GetShipDirSinCos_1
-  inc h
-GetShipDirSinCos_1:
-  ld b,(hl)
-; Get Cos(ShipDir)
-  ld a,c		; restore ShipDir
-  sub 8
-  and $1F		; keep 0..31 value
-  ld hl,SineTbl
-  add a,l
-  ld l,a
-  jp nc,GetShipDirSinCos_2
-  inc h
-GetShipDirSinCos_2:
-  ld c,(hl)
-  pop hl
-  ret
-
-; ShipDir to Sine table
-SineTbl:
-  db	0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12
-  db	0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12
 
 ;----------------------------------------------------------------------------
 AstroCodeBeg:
@@ -326,7 +294,7 @@ ObjectsHitRadius:
   db	30		; 1 - sauser
   db	32		; 2 - S-size rock
   db	64		; 3 - M-size rock
-  db	127		; 4 - L-size rock
+  db	128		; 4 - L-size rock
   db	0		; 5 - ship or sauser bullets
   db	0		; 6 - shrapnel
   db	0		; 7 - debris
@@ -344,6 +312,241 @@ InitShipsPerGame:
   ld (PlayerScore),a
   ld (PlayerScore+1),a
   ld (CurAsteroids),a
+  ret
+
+UpdateShipFire:
+; Check ShipBulletSR counter first
+  ld a,(ShipBulletSR)
+  or a
+  jp z,UpdateShipFire_1
+  dec a
+  ld (ShipBulletSR),a
+  ret
+UpdateShipFire_1:
+  ld a,(FireSw)
+  or a
+  ret z
+; Fire key pressed - creating new bullet
+  ld a,8		; counter initial value
+  ld (ShipBulletSR),a
+; Find an empty bullet slot
+  ld hl,ShipShotObjects
+  ld b,4		; ship bullets max
+  ld de,$0008		; object record size
+UpdateShipFire_2:
+  ld a,(hl)		; check the status
+  or a
+  jp z,UpdateShipFire_3	; inactive => use the slot
+  add hl,de		; next record
+  dec b
+  jp nz,UpdateShipFire_2; continue the loop
+  ret			; no free bullet slots => exit
+UpdateShipFire_3:	; found free slot, HL = object record
+; Create new bullet
+  ld a,28		; active status + bullet timer value
+  ld (hl),a		; activate the bullet
+  inc hl
+  inc hl		; now HL = object record + 2, at X lo
+  ld de,ShipXPos
+  ld a,(de)		; get X lo
+  ld (hl),a		; set X lo
+  inc de
+  inc hl
+  ld a,(de)		; get X hi
+  ld (hl),a		; set X hi
+  inc de
+  inc hl
+  ld a,(de)		; get Y lo
+  ld (hl),a		; set Y lo
+  inc de
+  inc hl
+  ld a,(de)		; get Y hi
+  ld (hl),a		; set Y hi
+  inc hl
+  call GetShipDirSinCos
+  ld a,c		; get Cos(ShipDir)
+  ld (hl),a		; set X speed
+  inc hl
+  ld a,b		; get Sin(ShipDir)
+  ld (hl),a		; set Y speed
+  ret
+
+; Get Sinus and Cosinus values for the ShipDir
+; Returns: B = Sin(ShipDir), C = Cos(ShipDir)
+GetShipDirSinCos:
+  push hl
+; Get Sin(ShipDir)
+  ld a,(ShipDir)
+  ld c,a		; save it for later
+  ld hl,SineTbl
+  add a,l
+  ld l,a
+  jp nc,GetShipDirSinCos_1
+  inc h
+GetShipDirSinCos_1:
+  ld b,(hl)
+; Get Cos(ShipDir)
+  ld a,c		; restore ShipDir
+  sub 8
+  and $1F		; keep 0..31 value
+  ld hl,SineTbl
+  add a,l
+  ld l,a
+  jp nc,GetShipDirSinCos_2
+  inc h
+GetShipDirSinCos_2:
+  ld c,(hl)
+  pop hl
+  ret
+
+; ShipDir to Sine table
+SineTbl:
+  db	0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12
+  db	0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12
+
+HitDectection:
+; Loop thru rock objects
+  ld hl,AstObjects
+  ld b,MaxAsteroids	; number of objects
+HitDectection_R1:
+  ld a,(hl)		; get rock object status
+  or a
+  jp z,HitDectection_RS	; not alive, skipping
+  push hl		; save the rock object address
+;TODO: get hit box size for this rock
+  inc hl
+  inc hl		; HL = rock object + 2, at X lo
+  ex de,hl		; now DE = rock object + 2
+;  push de		; save the rock object address + 2
+; Check this rock against all bullets
+  ld hl,ShipShotObjects
+  ld c,4		; number of objects
+HitDectection_B1:
+  ld a,(hl)		; get bullet object status
+  or a
+  jp z,HitDectection_BS
+  push bc		; save counters B, C
+  push hl		; save the bullet object address
+  inc hl
+  inc hl		; HL = bullet object + 2, at X lo
+; check if we have the hit
+  ld a,128		;STUB for hit box size
+  call HitTest		; returns Carry=1 for hit
+  jp nc,HitDectection_BN
+; We have a hit between the bullet and the rock
+  xor a
+  pop hl		; restore the bullet object address
+  ld (hl),a		; deactivate the bullet object
+  pop bc		; restore counters B, C
+  pop hl		; restore the rock object address
+  ld (hl),a		;STUB: deactivate the rock object
+;TODO: break the rock by two
+  jp HitDectection_RS	; continue the loop by rocks
+HitDectection_BN:
+  pop hl		; restore the bullet object address
+  pop bc		; restore counters B, C
+HitDectection_BS:
+  dec c
+  jp z,HitDectection_BE
+  ld de,$0008
+  add hl,de		; to the next bullet record
+  jp HitDectection_B1
+HitDectection_BE:	; end of loop by bulets
+;  pop de		; restore the rock object address + 2
+; ; Check this rock against the ship object
+;   ld hl,ShipXPos
+;   ld a,128+64		;STUB for hit box size
+;   call HitTest		; returns Carry=1 for hit
+;   jp nc,HitDectection_SN
+; ; We have a hit between the ship and the rock
+; ;TODO: explode the ship
+;   pop hl		; restore the rock object address
+;   xor a
+;   ld (hl),a		; deactivate the rock object
+;   jp HitDectection_RS
+HitDectection_SN:
+  pop hl		; restore the rock object address
+HitDectection_RS:
+  ld de,$0008
+  add hl,de		; to the next record
+  dec b
+  jp nz,HitDectection_R1  ; continue loop by rocks
+
+  ret
+
+; Check if we have a collision
+;   HL = object 1 address + 2 - at X lo
+;   DE = object 2 address + 2 - at X lo
+;   A = hit distance
+; Returns: Carry=1 - hit, Carry=0 - no hit
+HitTest:
+; get X1 and X2
+  ex de,hl		; now DE = object1 + 2, HL = object2 + 2
+  ld c,(hl)		; get X2 lo
+  inc hl
+  ld b,(hl)		; get X2 hi, now BC = X2
+  inc hl		; now HL = object2 + 4
+  push hl		; save HL = object2 + 4
+  ex de,hl		; now HL = object1 + 2
+  ld e,(hl)		; get X1 lo
+  inc hl
+  ld d,(hl)		; get X1 hi; now DE = X1
+  inc hl
+  push hl		; save HL = object1 + 4
+; calculate dX = abs(X1 - X2)
+  push af		; save A = hit distance
+  call SubAbs		; HL = abs(X1 - X2); Z=1 if H is zero
+  pop bc		; restore B = hit distance
+; check if dX < hit distance
+  jp nz,HitTest_1	; Z=0 => dX > 255 => not a hit
+  ld a,l
+  sub b
+  jp c,HitTest_2	; dX < hit distance => within the hit box by X, let's check by Y
+; distance >= hit distance => not a hit
+HitTest_1:
+  pop hl
+  pop hl		; empty stack
+  ret			; Carry=0 - no hit
+HitTest_2:
+; get Y1 and Y2
+  pop hl		; HL = object1 + 4, at Y1 lo
+  pop de		; DE = object2 + 4, at Y2 lo
+  push bc		; save B = hit distance
+  ld c,(hl)		; get Y1 lo
+  inc hl
+  ld b,(hl)		; get Y1 hi, now BC = Y1
+  ex de,hl		; now HL = object2 + 4
+  ld e,(hl)		; get Y2 lo
+  inc hl
+  ld d,(hl)		; get Y2 hi; now DE = Y2
+; calculate dY = abd(Y2 - Y1)
+  call SubAbs		; HL = abs(Y2 - Y1); Z=1 if H is zero
+  pop bc		; restore B = hit distance
+; check if dY < hit distance
+  ret nz		; Z=0 => dY > 255 => not a hit
+  ld a,l
+  sub b
+  ret nc		; dY >= hit distance => not a hit, Carry=0
+  ret			; dy < hit distance => within the hit box, Carry=1
+
+; Subtract and get absolute value
+; Result HL = abs(DE - BC); returns Z=1 if H is zero - result is 0..255
+SubAbs:
+; calculate HL = DE - BC
+  ld a,e
+  sub c			; sub lo
+  ld l,a
+  ld a,d
+  sbc a,b		; sub hi with carry
+  ld h,a
+  ret nc		; no Carry means we have a positive value
+; calculate HL = BC - DE
+  ld a,c
+  sub e			; sub lo
+  ld l,a
+  ld a,b
+  sbc a,d		; sub hi with carry
+  ld h,a
   ret
 
 DrawObjects:
@@ -770,14 +973,22 @@ UpdateObjects_X1:
   ld e,(hl)		; now DE = X position
   ex de,hl		; now HL = X position, DE = object address + 2
   add hl,bc		; X = X + SpeedX
+; for negative, add #0AAB to wrap into positive
+  ld a,h
+  or a
+  jp p,UpdateObjects_XP
+  ld bc,#0AAB
+  add hl,bc
+  jp UpdateObjects_XS
+UpdateObjects_XP:	; new X is positive number
 ; check for upper bound, wrap on $0AAB = 2731
   ld a,h
   cp $0A		; check hi byte
-  jp c,UpdateObjects_X3	; less than $0A00, no need to wrap => skip
+  jp c,UpdateObjects_XS	; less than $0A00, no need to wrap => skip
   jp nz,UpdateObjects_X2  ; $AB00 or more, need to wrap => go wrap
   ld a,l		; for $0AXX need to check lo byte
   cp $AB
-  jp c,UpdateObjects_X3	; less than $0AAB, no need to wrap => skip
+  jp c,UpdateObjects_XS	; less than $0AAB, no need to wrap => skip
 UpdateObjects_X2:	; wrap by X
   ld a,l
   sub $AB		; subtract lo
@@ -785,7 +996,7 @@ UpdateObjects_X2:	; wrap by X
   ld a,h
   sbc a,$0A		; subtract hi
   ld h,a
-UpdateObjects_X3:
+UpdateObjects_XS:	; save new X
   ex de,hl		; now DE = new X position, HL = object address + 2, at X lo
   ld (hl),e		; save X lo
   inc hl		; now HL = object address + 3, at X hi
@@ -811,23 +1022,23 @@ UpdateObjects_Y1:
   add hl,bc		; Y = Y + SpeedY
 ; check for upper bound, wrap
   ld a,h
-  and $7F		; max Y is $07FF = 2047
+  and $07		; max Y is $07FF = 2047
   ld h,a
+UpdateObjects_YS:	; save new Y
   ex de,hl		; now DE = new Y position, HL = object address + 4, at Y lo
   ld (hl),e		; save Y lo
   inc hl		; now HL = object address + 5, at Y hi
   ld (hl),d		; save Y hi
-;
+; finishing the iteration
 UpdateObjects_skipY:
   pop hl		; restore object address
-; finishing the iteration
   pop bc
 UpdateObjects_next:
+  dec b
+  ret z
   ld de,$0008		; object record size
   add hl,de		; next object record
-  dec b
-  jp nz,UpdateObjects_1
-  ret
+  jp UpdateObjects_1	; continue the loop
 
 ; Saucer Reset
 SaucerReset:
