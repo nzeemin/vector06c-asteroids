@@ -404,6 +404,7 @@ SineTbl:
   db	0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12
   db	0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12
 
+; Collision detection for all objects
 HitDectection:
 ; Loop thru rock objects
   ld hl,AstObjects
@@ -411,6 +412,7 @@ HitDectection:
 HitDectection_R1:
   ld a,(hl)		; get rock object status
   or a
+;TODO: skip shrapnel objects
   jp z,HitDectection_RS	; not alive, skipping
   push hl		; save the rock object address
 ;TODO: get hit box size for this rock type
@@ -419,6 +421,7 @@ HitDectection_R1:
   ex de,hl		; now DE = rock object + 2
 ;  push de		; save the rock object address + 2
 ; Check this rock against all bullets
+;TODO: check UFO bullets too
   ld hl,ShipShotObjects
   ld c,4		; number of objects
 HitDectection_B1:
@@ -725,21 +728,10 @@ DrawRockLAddrs:
   dw	DrawRockL3S4, DrawRockL3S5, DrawRockL3S6, DrawRockL3S7
 
 DrawShrapnelProc:
-  ld c,a		; save shift
-  ld a,(hl)		; get Status
-  cp 10
-  ld a,c		; restore shift
-  jp c,DrawShrapnelProc_1  ; lifespan timer is low => jump
-  ld hl,Shrapnel1S0	; base sprite address - smaller sprite
+  ld hl,ShrapnelS0	; base sprite address - smaller sprite
   call Multiply48Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite24x16
-  ret
-DrawShrapnelProc_1:
-  ld hl,Shrapnel2S0	; base sprite address - bigger sprite
-  call Multiply96Base	; calculate sprite address based on shift A = 0..7
-  ex de,hl		; now HL = screen address, DE = sprite address
-  call DrawSprite32x24
   ret
 
 DrawBulletProc:
@@ -800,27 +792,8 @@ Multiply48Base:
   add hl,bc
   ret
 
-; Multiply A by 96; A = 0..7, HL = base address
-; Result: HL = base address + A * 96
-Multiply96Base:
-  push hl		; store base address
-  and 7
-  add a,a
-  ld c,a
-  ld b,0
-  ld hl,TableMul96
-  add hl,bc		; now HL = address in the table
-  ld c,(hl)		; get lo
-  inc hl
-  ld b,(hl)		; get hi; now HL = A * 48
-  pop hl		; restore base address
-  add hl,bc
-  ret
-
 TableMul48:
 	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
-TableMul96:
-	dw	0, 96, 96*2, 96*3, 96*4, 96*5, 96*6, 96*7
 TableMul384:
 	dw	384*0,  384*1,  384*2,  384*3,  384*4,  384*5,  384*6,  384*7
 	dw	384*8,  384*9,  384*10, 384*11, 384*12, 384*13, 384*14, 384*15
@@ -1207,6 +1180,7 @@ BreakAsteroid_Sm:
   ld a,6		; type = shrapnel
   ld (hl),a		; set Type
   dec hl		; now HL = object record + 0, at Status
+  ld a,8		; timer value
   ld (hl),a		; set Status as a timer
 BreakAsteroid_fin:
   pop hl
@@ -1601,38 +1575,6 @@ DrawSprite24x16R_3:
   ld h,a
 ; continue the loop by columns
   jp DrawSprite24x16R_1
-
-; Draw sprite 32x24 by XOR
-;   HL = address on the screen
-;   DE = sprite address
-DrawSprite32x24:
-  ld a,h		; get column byte
-  and $E0		; 3 top bits
-  ld (DrawSprite32x24_3+1),a	; set the mutable parameter
-  ld c,4		; 4 columns
-DrawSprite32x24_1:
-REPT 24
-  ld a,(de)
-  xor (hl)
-  ld (hl),a
-  inc de
-  dec l
-ENDM
-  dec c
-  ret z			; was last column => return
-; back to the top row
-  ld a,l
-  add a,24
-  ld l,a		; restore row L
-; next column
-  ld a,h
-  inc a
-  and $1F		; keep 0..31 column value
-DrawSprite32x24_3:
-  or $A0		; this parameter is mutable
-  ld h,a
-; continue the loop by columns
-  jp DrawSprite32x24_1
 
 NextColumn:
   ld a,h

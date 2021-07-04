@@ -3,7 +3,7 @@ Porting **Asteroids** game to soviet computer [Vector-06c](https://en.wikipedia.
 
 Thanks a lot to [zx-pk.ru forum](https://zx-pk.ru/forums/55-vektor.html) members for all the help and support!
 
-Porting status: Work In Progrss.
+Porting status: Work In Progress.
 
 ![](screenshot/titlescr.png) ![](screenshot/gameplay.png)
 

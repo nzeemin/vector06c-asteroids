@@ -401,8 +401,7 @@ namespace SpriteRotate
                 PrepareSpriteWithAllShifts(bmp, 8, 64, 3, 16, "Ufo", writer);
 
                 // Shrapnel
-                PrepareSpriteWithAllShifts(bmp, 72, 64, 3, 16, "Shrapnel1", writer);
-                PrepareSpriteWithAllShifts(bmp, 104, 64, 4, 24, "Shrapnel2", writer);
+                PrepareSpriteWithAllShifts(bmp, 72, 64, 3, 16, "Shrapnel", writer);
 
                 // Debris
                 PrepareSpriteWithAllShifts(bmp, 144, 64, 2, 8, "Debris1", writer);
