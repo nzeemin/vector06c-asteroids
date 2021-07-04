@@ -413,7 +413,7 @@ HitDectection_R1:
   or a
   jp z,HitDectection_RS	; not alive, skipping
   push hl		; save the rock object address
-;TODO: get hit box size for this rock
+;TODO: get hit box size for this rock type
   inc hl
   inc hl		; HL = rock object + 2, at X lo
   ex de,hl		; now DE = rock object + 2
@@ -439,8 +439,7 @@ HitDectection_B1:
   ld (hl),a		; deactivate the bullet object
   pop bc		; restore counters B, C
   pop hl		; restore the rock object address
-  ld (hl),a		;STUB: deactivate the rock object
-;TODO: break the rock by two
+  call BreakAsteroid    ; split the rock
   jp HitDectection_RS	; continue the loop by rocks
 HitDectection_BN:
   pop hl		; restore the bullet object address
@@ -1126,10 +1125,92 @@ CenterShip:
 
 ; Split the asteroid, only for M/L-sized rocks
 ;   HL = asteroid object record
+;WARN! The procedure should NOT change HL and BC
 BreakAsteroid:
-;TODO
+  push bc
+  push hl
+; Get the rock type
+  inc hl		; now HL = object record + 1, at Type
+  ld a,(hl)		; get object type
+  and 7			; 0..7
+; Check for small rock
+  cp 2			; small rock?
+  jp z,BreakAsteroid_Sm	; yes => jump
+;TODO: random-generate the rock sub-type
+  ld a,(hl)		; get object type with sub-type
+  dec a			; change the rock type: L -> M -> S
+  ld (hl),a		; set the reduced Type
+; Change the rock direction
+  push hl		; save HL = object record + 1, at Type
+; Create the second rock
   call GetFreeAstSlot
-;TODO
+  pop de		; restore DE = object record + 1, at Type
+  jp nz,BreakAsteroid_NS ; no slots available
+  ld (hl),1		; set Status to activate the new object
+  inc hl
+; Copy over to the new rock - the Type, and X, Y position
+  ld a,(de)		; get Type
+  ld (hl),a		; set Type
+  inc de
+  inc hl
+  ld a,(de)		; get X lo
+  ld (hl),a		; set X lo
+  inc de
+  inc hl
+  ld a,(de)		; get X hi
+  ld (hl),a		; set X hi
+  inc de
+  inc hl
+  ld a,(de)		; get Y lo
+  ld (hl),a		; set Y lo
+  inc de
+  inc hl
+  ld a,(de)		; get Y hi
+  ld (hl),a		; set Y hi
+  inc de		; now DE = object record + 6, at X speed
+  inc hl		; now HL = object record + 6, at X speed
+; Set new directions for the two rocks
+  ex de,hl		; now HL = new rock, DE = old rock, +6, at X speed
+  ld c,(hl)		; get old X speed
+  inc hl
+  ld b,(hl)		; get old Y speed
+  dec hl
+  ld (hl),b		; old rock X speed = old Y speed
+  inc hl
+  ld a,c
+  cpl
+  ld (hl),a		; old rock Y speed = inverted old X speed
+  ld a,b		; get old Y speed
+  cpl
+  ld (de),a		; new rock X speed = inverted old Y speed
+  inc de
+  ld a,c		; get old X speed
+  ld (de),a		; new rock Y speed = old X speed
+  jp BreakAsteroid_fin
+BreakAsteroid_NS:	; no slot for second asteroid
+  ex de,hl		; now HL = object record + 1
+  inc hl
+  inc hl
+  inc hl
+  inc hl
+  inc hl		; now HL = object record + 6, at X speed
+  ld c,(hl)		; get X speed
+  inc hl
+  ld a,(hl)		; get Y speed
+  ld (hl),c		; new Y speed = old X speed
+  dec hl
+  cpl
+  ld (hl),a		; new X speed = inverted old Y speed
+  jp BreakAsteroid_fin
+; For a small rock, convert to shrapnel, set timer in Status
+BreakAsteroid_Sm:
+  ld a,6		; type = shrapnel
+  ld (hl),a		; set Type
+  dec hl		; now HL = object record + 0, at Status
+  ld (hl),a		; set Status as a timer
+BreakAsteroid_fin:
+  pop hl
+  pop bc
   ret
 
 ; Find a free asteroid slot
