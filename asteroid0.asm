@@ -4,7 +4,7 @@
 Start	.equ	240h
 
 	.EXPORT KeyLineEx, KeyLine0
-	.EXPORT IntCount, SetPaletteGame0, SetPaletteGame1
+	.EXPORT IntCount, SetPaletteGame
 
 ;----------------------------------------------------------------------------
 
@@ -55,12 +55,15 @@ Restart:
 	ei
 	jp Start
 
-; Programming the Palette
-SetPaletteGame0:
-	lxi	h, PaletteGame0+15
-	jp	SetPalette
-SetPaletteGame1:
+; Set game palette; A = game plane address hi = $A0,$C0,$E0
+SetPaletteGame:
+	rrc			; A = $50,$60,$70
+	sui	50h		; A = $00,$10,$20
 	lxi	h, PaletteGame1+15
+	mov	e, a
+	mvi	d, 0
+	dad	d		; now HL = PaletteGame2 + 15 + (one of $00,$10,$20)
+; Programming the Palette
 SetPalette:
 	ei
 	hlt
@@ -124,19 +127,25 @@ IntCount:	.db 0		; interrupt counter
 
 ColorNone .equ 00000000b
 ColorGame .equ 11111110b    ; Color for game
+ColorEcho .equ 11010010b    ; Color for game echo
 ColorText .equ 10111111b    ; Color for text
 ColorBoth .equ 11111111b    ; Color for game and text
 ; Palette colors, game
-PaletteGame0:		; Palette for Plane 0 game + Plane 2 text
-	.db	ColorNone, ColorGame, ColorNone, ColorGame	; 0..3
-	.db	ColorText, ColorBoth, ColorText, ColorBoth	; 4..7
-	.db	ColorNone, ColorGame, ColorNone, ColorGame	; 8..11
-	.db	ColorText, ColorBoth, ColorText, ColorBoth	; 12..15
-PaletteGame1:		; Palette for Plane 1 game + Plane 2 text
-	.db	ColorNone, ColorNone, ColorGame, ColorGame	; 0..3
-	.db	ColorText, ColorText, ColorBoth, ColorBoth	; 4..7
-	.db	ColorNone, ColorNone, ColorGame, ColorGame	; 8..11
+PaletteGame1:		; Palette for Plane 1 game + Plane 0 echo + Plane 3 text
+	.db	ColorNone, ColorEcho, ColorGame, ColorGame	; 0..3
+	.db	ColorNone, ColorEcho, ColorGame, ColorGame	; 4..7
+	.db	ColorText, ColorText, ColorBoth, ColorBoth	; 8..11
 	.db	ColorText, ColorText, ColorBoth, ColorBoth	; 12..15
+PaletteGame0:		; Palette for Plane 0 game + Plane 2 echo + Plane 3 text
+	.db	ColorNone, ColorGame, ColorNone, ColorGame	; 0..3
+	.db	ColorEcho, ColorGame, ColorEcho, ColorGame	; 4..7
+	.db	ColorText, ColorBoth, ColorText, ColorBoth	; 8..11
+	.db	ColorText, ColorBoth, ColorText, ColorBoth	; 12..15
+PaletteGame2:		; Palette for Plane 2 game + Plane 1 echo + Plane 3 text
+	.db	ColorNone, ColorNone, ColorEcho, ColorEcho	; 0..3
+	.db	ColorGame, ColorGame, ColorGame, ColorGame	; 4..7
+	.db	ColorText, ColorText, ColorText, ColorText	; 8..11
+	.db	ColorBoth, ColorBoth, ColorBoth, ColorBoth	; 12..15
 ; Palette colors, title screen
 PaletteTitle:
 	.db	$00	;0

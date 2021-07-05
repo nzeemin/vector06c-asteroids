@@ -20,8 +20,9 @@ Start:
 ; Waiting on the title screen
   call WaitAnyKey
 
-  call ClearPlane012	; Clear the whole screen
-  call SetPaletteGame0
+  call ClearPlane0123	; Clear the whole screen
+  ld a,(CurrentPlaneHi)
+  call SetPaletteGame
 
 ; ;TEST HitTest
 ;   ld a,1
@@ -95,7 +96,7 @@ InitWaves:
 ; Game loop start
 Start_1:
 ;DEBUG: Show frame count at right-top corner
-  ld hl,$BFFF
+  ld hl,$9FFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
   add a,$30		; '0'
@@ -136,20 +137,18 @@ Start_1:
   ld (IntCount),a
 ; Switch working plane
   ld a,(CurrentPlaneHi)
-  xor $20
+  add a,$20
+  jp nc,Start_A
+  ld a,$A0
+Start_A:
   ld (CurrentPlaneHi),a
 ; Set palette to show already drawn plane
 ;  ld a,(CurrentPlaneHi)
-  and $20
-  jp z, Start_2		; new plane is $C000 => jump
-  call SetPaletteGame1
-  jp Start_1		; continue the game loop
-Start_2:
-  call SetPaletteGame0
+  call SetPaletteGame
   jp Start_1		; continue the game loop
 
 LastIntCount:	db 0
-CurrentPlaneHi:	db $C0	; Current plane address hi byte
+CurrentPlaneHi:	db $E0	; Current plane address hi byte
 
 STitle1:	DEFM " ORIGINAL GAME 1979 ATARI INC",0
 STitle2:	DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0
@@ -1394,12 +1393,14 @@ DrawChar_next:
   ret
 
 ; Clear the whole screen
-ClearPlane012:
+ClearPlane0123:
   ld hl,$0000
   call ClearPlane
   ld hl,$E000
   call ClearPlane
   ld hl,$C000
+  call ClearPlane
+  ld hl,$A000
   jp ClearPlane
 ;
 ; Clear plane selected by A = plane address hi byte
