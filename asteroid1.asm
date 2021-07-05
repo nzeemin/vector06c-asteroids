@@ -137,9 +137,10 @@ Start_1:
   ld (IntCount),a
 ; Switch working plane
   ld a,(CurrentPlaneHi)
-  add a,$20
-  jp nc,Start_A
-  ld a,$A0
+  sub $20
+  cp $80
+  jp nz,Start_A
+  ld a,$E0
 Start_A:
   ld (CurrentPlaneHi),a
 ; Set palette to show already drawn plane
