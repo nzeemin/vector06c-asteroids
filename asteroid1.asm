@@ -9,7 +9,7 @@ Start:
 ;  ld sp,$0100
 
 ; Drawing two text strings under the title screen
-  ld hl,$A01C
+  ld hl,$A21C
   ld (TextAddr),hl
   ld hl,STitle1
   call DrawString
@@ -82,53 +82,84 @@ Start:
 
 InitGame:
   call InitGameVars	; Initialize various game variables
-  call CenterShip	; Center ship on display and zero velocity
 
-InitWaves:
+  ld hl,$821C
+  ld (TextAddr),hl
+  ld hl,STitle1
+  call DrawString
+  ld hl,$800C
+  ld (TextAddr),hl
+  ld hl,STitle2
+  call DrawString
+  ld hl,$86E0
+  ld (TextAddr),hl
+  ld hl,SPressToStart
+  call DrawString
+
+;  ld a,6			; Number of asteroids for the demo screen
+;  ld (AstPerWave),a
   call InitWaveVars
 
-  call DrawShipLives	;TEST
-  call DrawPlayerScore	;TEST
-
-  ld a,1
-  ld (ShipStatus),a	;TEST: activate the ship
+;  call DrawShipLives	;TEST
+;  call DrawPlayerScore	;TEST
 
 ; Game loop start
-Start_1:
+GameRunningLoop:
 ;DEBUG: Show frame count at right-top corner
   ld hl,$9FFF
   ld (TextAddr),hl
   ld a,(LastIntCount)
-  add a,$30		; '0'
-  call DrawChar		; show frame count
-; Tune procedures for the working plane
-  ld A,(CurrentPlaneHi)
+  add a,$30			; '0'
+  call DrawChar			; show frame count
+; Adjust procedures for the working plane
+  ld a,(CurrentPlaneHi)
   call SwitchToPlane
 ; Clear the working plane
   ld a,(CurrentPlaneHi)
   call ClearPlaneA
 
-;  ld hl,$BDFF
-;  ld (TextAddr),hl
-;  ld a,(FireSw)
-;  add a,$30		; '0'
-;  call DrawChar		; show FireSw
+  ld hl,$9DFF
+  ld (TextAddr),hl
+  ld a,(CurAsteroids)
+  add a,$30			; '0'
+  call DrawChar			; show FireSw
 
   call ReadKeyboard
   call ProcessKeyboard
 
-;TODO: if game mode
-  call UpdateShipFire		; Update ship firing
-;TODO: end if game mode
-
-  ;ld a,(ThrustSw)
-  ;or a
-  ;call nz,DoShipExplosion	; TEST
+  ld a,(NumPlayers)
+  or a				; if in game mode
+  call nz,UpdateShipFire	; Update ship firing
 
   call UpdateObjects		; Update position for all objects
-  call HitDectection		; Collision detection
+
+  ld a,(NumPlayers)
+  or a				; if in game mode
+  call nz,HitDectection		; Collision detection
 
   call DrawObjects
+
+  ld a,(NumPlayers)
+  or a
+  jp nz,GameRunningLoop_1	; skip if not in game mode
+; Check if Fire button pressed to start the game
+  ld a,(FireSw)
+  or a
+  jp z,GameRunningLoop_1
+; Start the game
+  call ClearPlane0123		; clear the whole screen
+;TODO: Deactivate all rocks
+  call InitGameVars
+  call InitWaveVars
+  ld a,1
+  ld (ShipStatus),a		; activate the ship
+  ld (NumPlayers),a		; set the game mode flag
+  call CenterShip		; Center ship on display and zero velocity
+GameRunningLoop_1:
+
+;TODO: if game mode
+;TODO: Update score/lives indicators if needed
+;TODO: end if game mode
 
 ; Save interrupt counter value
   ld a,(IntCount)
@@ -137,7 +168,7 @@ Start_1:
   ld (IntCount),a
 ; Switch working plane
   ld a,(CurrentPlaneHi)
-  sub $20
+  sub $20			; CurrentPlaneHi cycles $E0 -> $C0 -> $A0
   cp $80
   jp nz,Start_A
   ld a,$E0
@@ -146,13 +177,14 @@ Start_A:
 ; Set palette to show already drawn plane
 ;  ld a,(CurrentPlaneHi)
   call SetPaletteGame
-  jp Start_1		; continue the game loop
+  jp GameRunningLoop		; continue the game loop
 
 LastIntCount:	db 0
 CurrentPlaneHi:	db $E0	; Current plane address hi byte
 
-STitle1:	DEFM " ORIGINAL GAME 1979 ATARI INC",0
-STitle2:	DEFM "VECTOR-06C TECH PREVIEW NZEEMIN",0
+STitle1:	DEFM "ORIGINAL GAME 1979 ATARI INC",0
+STitle2:	DEFM "VECTOR-06C DEMO VERSION NZEEMIN",0
+SPressToStart:	DEFM "PRESS FIRE TO START",0
 SGameOver:	DEFM "GAME OVER",0
 
 ProcessKeyboard:
@@ -209,7 +241,7 @@ ShipYAccel:		db	0
 ScrTimer:		db	0	; Countdown timer for saucer spawn
 ScrTmrReload:		db	0	; Reload value for saucer timer
 AstPerWave:		db	2
-CurAsteroids:		db	0
+CurAsteroids:		db	0	; Current number of asteroids
 
 ; Object record format:
 ; + 0:      Status byte: 0 = Not active
@@ -305,7 +337,6 @@ ObjectsHitRadius:
 InitGameVars:
   ld a,4		; Prepare to start wave 1 with 4 asteroids (+2 later).
   ld (AstPerWave),a
-InitShipsPerGame:
   xor a
   ld (ShipStatus),a
   ld (ShpShotTimer),a
@@ -1029,6 +1060,8 @@ InitWaveVars:
   ld b,a		; counter
 InitWaveVars_1:
   push bc
+  ld hl,CurAsteroids
+  inc (hl)		; adding one more now
   ld a,1		; 1 = active
   ld (de),a		; set asteroid state to Active
   inc de		; now DE = object record + 1
@@ -1159,6 +1192,9 @@ BreakAsteroid:
   inc de
   ld a,c		; get old X speed
   ld (de),a		; new rock Y speed = old X speed
+; Update number of asteroids
+  ld hl,CurAsteroids
+  inc (hl)		; one added
   jp BreakAsteroid_fin
 BreakAsteroid_NS:	; no slot for second asteroid
   ex de,hl		; now HL = object record + 1
@@ -1182,6 +1218,8 @@ BreakAsteroid_Sm:
   dec hl		; now HL = object record + 0, at Status
   ld a,8		; timer value
   ld (hl),a		; set Status as a timer
+  ld hl,CurAsteroids
+  dec (hl)		; one less
 BreakAsteroid_fin:
   pop hl
   pop bc
@@ -1229,7 +1267,7 @@ ENDM
   ret
 
 DrawPlayerScore:
-  ld hl,$A0FF		; screen address
+  ld hl,$80FF		; screen address
   ld (TextAddr),hl
   ld hl,PlayerScore
   call DrawNumberString
@@ -1241,7 +1279,7 @@ DrawShipLives:
   ld a,5		; max ships
   sub b
   ld c,a		; now C = spaces to draw
-  ld hl,$A1F0		; screen address
+  ld hl,$81F0		; screen address
   ld (TextAddr),hl
 DrawShipLives_1:
   ld a,$40		; ship symbol
@@ -1401,6 +1439,7 @@ ClearPlane0123:
   call ClearPlane
   ld hl,$C000
   call ClearPlane
+ClearPlane3:
   ld hl,$A000
   jp ClearPlane
 ;

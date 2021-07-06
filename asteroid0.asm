@@ -127,7 +127,7 @@ IntCount:	.db 0		; interrupt counter
 
 ColorNone .equ 00000000b
 ColorGame .equ 11111110b    ; Color for game
-ColorEcho .equ 11010010b    ; Color for game echo
+ColorEcho .equ 10000000b    ; Color for game echo
 ColorText .equ 10111111b    ; Color for text
 ColorBoth .equ 11111111b    ; Color for game and text
 ; Palette colors, game
