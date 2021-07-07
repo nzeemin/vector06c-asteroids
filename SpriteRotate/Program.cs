@@ -36,6 +36,10 @@ namespace SpriteRotate
                         int x = col * 8;
                         int y = row * 13;
                         var octets = new byte[12];
+                        var ch = (char)(' ' + col + row * 16);
+
+                        if (ch > '9' && ch <'A')
+                            continue;
 
                         for (int i = 0; i < 12; i++)
                         {
@@ -57,7 +61,6 @@ namespace SpriteRotate
                             if (i < 11) writer.Write(",");
                         }
 
-                        var ch = (char)(' ' + col + row * 16);
                         writer.Write($"  ; {ch}");
                         writer.WriteLine();
                     }

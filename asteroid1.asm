@@ -141,21 +141,19 @@ GameRunningLoop:
 
   ld a,(NumPlayers)
   or a
-  jp nz,GameRunningLoop_1	; skip if not in game mode
+  jp z,GameRunningLoop_1	; jump if not in game mode
+; In the demo mode, check if the wave ended
+  ld a,(CurAsteroids)
+  or a				; do we have any rocks on the screen?
+  jp nz,GameRunningLoop_2
+  call InitWaveVars		; start the next wave
+  jp GameRunningLoop_2
+GameRunningLoop_1:		; in the game mode
 ; Check if Fire button pressed to start the game
   ld a,(FireSw)
   or a
-  jp z,GameRunningLoop_1
-; Start the game
-  call ClearPlane0123		; clear the whole screen
-;TODO: Deactivate all rocks
-  call InitGameVars
-  call InitWaveVars
-  ld a,1
-  ld (ShipStatus),a		; activate the ship
-  ld (NumPlayers),a		; set the game mode flag
-  call CenterShip		; Center ship on display and zero velocity
-GameRunningLoop_1:
+  call nz,PrepareNewGame	; Start the game
+GameRunningLoop_2:
 
 ;TODO: if game mode
 ;TODO: Update score/lives indicators if needed
@@ -178,6 +176,18 @@ Start_A:
 ;  ld a,(CurrentPlaneHi)
   call SetPaletteGame
   jp GameRunningLoop		; continue the game loop
+
+; Called from the game loop to start a new game
+PrepareNewGame:
+  call ClearPlane0123		; clear the whole screen
+;TODO: Deactivate all rocks
+  call InitGameVars
+  call InitWaveVars
+  ld a,1
+  ld (ShipStatus),a		; activate the ship
+  ld (NumPlayers),a		; set the game mode flag
+  call CenterShip		; Center ship on display and zero velocity
+  ret		; return to the game loop
 
 LastIntCount:	db 0
 CurrentPlaneHi:	db $E0	; Current plane address hi byte
@@ -1282,7 +1292,7 @@ DrawShipLives:
   ld hl,$81F0		; screen address
   ld (TextAddr),hl
 DrawShipLives_1:
-  ld a,$40		; ship symbol
+  ld a,$2F		; ship symbol
   call DrawChar
   dec b
   jp nz,DrawShipLives_1
@@ -1404,6 +1414,10 @@ DrawChar:
   push bc
 ;NOTE: Drawing a space char as a regular char to erase the place
 ; Calculate the symbol address
+  cp $41
+  jp c,DrawChar_2
+  sub 7		; so 'A' comes right after '9'
+DrawChar_2:
   sub $20       ; font starts from ' '
   ld e,a        ; calculating the symbol address
   ld l,a        ;
