@@ -9,20 +9,72 @@ Start:
 ;  ld sp,$0100
 
 ; Drawing two text strings under the title screen
-  ld hl,$A21C
-  ld (TextAddr),hl
-  ld hl,STitle1
-  call DrawString
-  ld hl,$A00C
-  ld (TextAddr),hl
-  ld hl,STitle2
-  call DrawString
+  call DrawTitles
 ; Waiting on the title screen
   call WaitAnyKey
 
   call ClearPlane0123	; Clear the whole screen
   ld a,(CurrentPlaneHi)
   call SetPaletteGame
+
+; ;TEST draw L-size rocks
+;   ld a,$C0
+;   call SetPaletteGame
+;   ld c,4
+; Test_1:
+;   ld b,8
+; Test_2:
+;   push bc
+;   ld hl,Test_4		; where to return
+;   push hl
+;   ld a,b		; 1..8
+;   dec a			; 0..7
+;   add a,a
+;   add a,a
+;   ld hl,CurrentPlaneHi
+;   or (hl)
+;   ld h,a		; now we have screen hi
+;   ld a,c		; 1..4
+;   add a,a
+;   add a,a
+;   add a,a
+;   add a,a
+;   add a,a
+;   ld l,a		; now we have screen lo
+;   ex de,hl
+;   ld a,b		; 1..8
+;   dec a			; 0..7 - shift
+;   add a,a
+;   ld b,a		; save shift * 2
+;   inc hl		; now HL = object record + 1, at Type
+;   ld a,c		; 1..4
+;   dec a			; 0..3 - rock type
+;   rla
+;   rla
+;   rla
+;   rla			; -> bits 4..5
+;   and $30
+;   or b			; now A = draw procedure number * 2
+;   ld hl,DrawRockLAddrs	; table address
+;   add a,l
+;   ld l,a
+;   jp nc,Test_3
+;   inc h
+; Test_3:
+;   ld c,(hl)		; get lo
+;   inc hl
+;   ld b,(hl)		; get hi; now BC = sprite drawing code address
+;   push bc		; store the sprite drawing code address to call
+;   ex de,hl		; now HL = screen address
+;   ret			; jumping to the sprite drawing code
+; Test_4:
+;   pop bc
+;   dec b
+;   jp nz,Test_2
+;   dec c
+;   jp nz,Test_1
+;   di
+;   halt
 
 ; ;TEST HitTest
 ;   ld a,1
@@ -83,14 +135,7 @@ Start:
 InitGame:
   call InitGameVars	; Initialize various game variables
 
-  ld hl,$821C
-  ld (TextAddr),hl
-  ld hl,STitle1
-  call DrawString
-  ld hl,$800C
-  ld (TextAddr),hl
-  ld hl,STitle2
-  call DrawString
+  call DrawTitles	; Draw the titles for demo mode
   ld hl,$86E0
   ld (TextAddr),hl
   ld hl,SPressToStart
@@ -122,7 +167,7 @@ GameRunningLoop:
   ld (TextAddr),hl
   ld a,(CurAsteroids)
   add a,$30			; '0'
-  call DrawChar			; show FireSw
+  call DrawChar			; show CurAsteroids
 
   call ReadKeyboard
   call ProcessKeyboard
@@ -196,6 +241,17 @@ STitle1:	DEFM "ORIGINAL GAME 1979 ATARI INC",0
 STitle2:	DEFM "VECTOR-06C DEMO VERSION NZEEMIN",0
 SPressToStart:	DEFM "PRESS FIRE TO START",0
 SGameOver:	DEFM "GAME OVER",0
+
+DrawTitles:
+  ld hl,$821C
+  ld (TextAddr),hl
+  ld hl,STitle1
+  call DrawString
+  ld hl,$800C
+  ld (TextAddr),hl
+  ld hl,STitle2
+  call DrawString
+  ret
 
 ProcessKeyboard:
   ld c,a

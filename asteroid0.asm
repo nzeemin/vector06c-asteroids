@@ -156,7 +156,7 @@ PaletteTitle:
 	.db	$F8	;5
 	.db	$3F	;6
 	.db	$FF	;7
-	.db	$00	;8
+	.db	ColorText ;8
 	.db	$C0	;9
 	.db	$07	;10
 	.db	$C7	;11

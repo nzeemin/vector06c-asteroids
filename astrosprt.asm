@@ -166,7 +166,6 @@ DrawRockL0S0:
   inc l
   inc l
   inc l
-  inc l
   call NextColumn	; col 2
   dec l
   ld a,d
@@ -291,10 +290,6 @@ DrawRockL0S0:
   ld a,c
   xor (hl)
   ld (hl),a		; col 2 row 29 = $80
-  dec l
-  dec l
-  dec l
-  call NextColumn	; col 3
   ret
 DrawRockL0S1:
   dec l
@@ -462,7 +457,6 @@ DrawRockL0S1:
   ld (hl),a		; col 1 row 2 = $80
   inc l
   inc l
-  inc l
   call NextColumn	; col 2
   dec l
   ld de,$5030
@@ -585,7 +579,6 @@ DrawRockL0S1:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 30 = $80
-  dec l
   dec l
   call NextColumn	; col 3
   ld a,l
@@ -727,7 +720,6 @@ DrawRockL0S2:
   xor (hl)
   ld (hl),a		; col 0 row 30 = $01
   dec l
-  dec l
   call NextColumn	; col 1
   ld de,$06FF
   ld a,e
@@ -766,7 +758,6 @@ DrawRockL0S2:
   ld a,e
   xor (hl)
   ld (hl),a		; col 1 row 1 = $80
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -1022,7 +1013,6 @@ DrawRockL0S3:
   dec l
   dec l
   dec l
-  dec l
   call NextColumn	; col 1
   ld de,$807F
   ld a,e
@@ -1068,7 +1058,6 @@ DrawRockL0S3:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 1 = $C0
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -1323,9 +1312,10 @@ DrawRockL0S4:
   ld a,c
   xor (hl)
   ld (hl),a		; col 0 row 27 = $01
-  ld a,l
-  sub $05		; skip 5 rows
-  ld l,a
+  dec l
+  dec l
+  dec l
+  dec l
   call NextColumn	; col 1
   ld de,$403F
   ld a,e
@@ -1377,7 +1367,6 @@ DrawRockL0S4:
   ld a,e
   xor (hl)
   ld (hl),a		; col 1 row 1 = $60
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -1630,7 +1619,7 @@ DrawRockL0S5:
   xor (hl)
   ld (hl),a		; col 0 row 26 = $01
   ld a,l
-  sub $06		; skip 6 rows
+  sub $05		; skip 5 rows
   ld l,a
   call NextColumn	; col 1
   ld de,$201F
@@ -1683,7 +1672,6 @@ DrawRockL0S5:
   ld a,e
   xor (hl)
   ld (hl),a		; col 1 row 1 = $30
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -1923,7 +1911,7 @@ DrawRockL0S6:
   xor (hl)
   ld (hl),a		; col 0 row 24 = $01
   ld a,l
-  sub $08		; skip 8 rows
+  sub $07		; skip 7 rows
   ld l,a
   call NextColumn	; col 1
   ld de,$100F
@@ -1984,7 +1972,6 @@ DrawRockL0S6:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 1 = $18
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -2225,7 +2212,7 @@ DrawRockL0S7:
   xor (hl)
   ld (hl),a		; col 0 row 23 = $01
   ld a,l
-  sub $09		; skip 9 rows
+  sub $08		; skip 8 rows
   ld l,a
   call NextColumn	; col 1
   ld a,b
@@ -2294,7 +2281,6 @@ DrawRockL0S7:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 1 = $0C
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -2593,7 +2579,6 @@ DrawRockL1S0:
   xor (hl)
   ld (hl),a		; col 0 row 30 = $06
   dec l
-  dec l
   call NextColumn	; col 1
   inc l
   ld bc,$9801
@@ -2628,7 +2613,6 @@ DrawRockL1S0:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 2 = $81
-  inc l
   inc l
   inc l
   call NextColumn	; col 2
@@ -2762,9 +2746,6 @@ DrawRockL1S0:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $C0
-  dec l
-  dec l
-  call NextColumn	; col 3
   ret
 DrawRockL1S1:
   dec l
@@ -2896,7 +2877,6 @@ DrawRockL1S1:
   xor (hl)
   ld (hl),a		; col 0 row 30 = $03
   dec l
-  dec l
   call NextColumn	; col 1
   inc l
   inc l
@@ -2932,7 +2912,6 @@ DrawRockL1S1:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 1 = $80
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -3058,7 +3037,6 @@ DrawRockL1S1:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 30 = $E0
-  dec l
   dec l
   call NextColumn	; col 3
   ld a,l
@@ -3202,7 +3180,6 @@ DrawRockL1S2:
   xor (hl)
   ld (hl),a		; col 0 row 30 = $01
   dec l
-  dec l
   call NextColumn	; col 1
   inc l
   ld de,$4180
@@ -3242,7 +3219,6 @@ DrawRockL1S2:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 1 = $C0
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -3350,7 +3326,6 @@ DrawRockL1S2:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $70
-  dec l
   dec l
   call NextColumn	; col 3
   ld a,l
@@ -3503,7 +3478,6 @@ DrawRockL1S3:
   dec l
   dec l
   dec l
-  dec l
   call NextColumn	; col 1
   inc l
   ld de,$A0C0
@@ -3543,7 +3517,6 @@ DrawRockL1S3:
   ld a,d
   xor (hl)
   ld (hl),a		; col 1 row 1 = $E0
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -3627,7 +3600,6 @@ DrawRockL1S3:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $38
-  dec l
   dec l
   call NextColumn	; col 3
   ld a,l
@@ -3788,9 +3760,10 @@ DrawRockL1S4:
   ld a,c
   xor (hl)
   ld (hl),a		; col 0 row 27 = $01
-  ld a,l
-  sub $05		; skip 5 rows
-  ld l,a
+  dec l
+  dec l
+  dec l
+  dec l
   call NextColumn	; col 1
   inc l
   ld de,$5060
@@ -3830,7 +3803,6 @@ DrawRockL1S4:
   ld a,e
   xor (hl)
   ld (hl),a		; col 1 row 1 = $70
-  inc l
   inc l
   call NextColumn	; col 2
   dec l
@@ -3894,7 +3866,6 @@ DrawRockL1S4:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 30 = $1C
-  dec l
   dec l
   call NextColumn	; col 3
   ld a,l
@@ -4059,7 +4030,7 @@ DrawRockL1S5:
   xor (hl)
   ld (hl),a		; col 0 row 26 = $01
   ld a,l
-  sub $06		; skip 6 rows
+  sub $05		; skip 5 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -4119,7 +4090,6 @@ DrawRockL1S5:
   xor (hl)
   ld (hl),a		; col 1 row 1 = $38
   inc l
-  inc l
   call NextColumn	; col 2
   dec l
   ld de,$0907
@@ -4169,7 +4139,6 @@ DrawRockL1S5:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 30 = $0E
-  dec l
   dec l
   call NextColumn	; col 3
   inc l
@@ -4323,7 +4292,7 @@ DrawRockL1S6:
   xor (hl)
   ld (hl),a		; col 0 row 24 = $01
   ld a,l
-  sub $08		; skip 8 rows
+  sub $07		; skip 7 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -4416,7 +4385,6 @@ DrawRockL1S6:
   xor (hl)
   ld (hl),a		; col 1 row 1 = $1C
   inc l
-  inc l
   call NextColumn	; col 2
   dec l
   ld a,d
@@ -4461,7 +4429,6 @@ DrawRockL1S6:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $07
-  dec l
   dec l
   call NextColumn	; col 3
   inc l
@@ -4604,7 +4571,7 @@ DrawRockL1S7:
   xor (hl)
   ld (hl),a		; col 0 row 23 = $01
   ld a,l
-  sub $09		; skip 9 rows
+  sub $08		; skip 8 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -4727,7 +4694,6 @@ DrawRockL1S7:
   xor (hl)
   ld (hl),a		; col 1 row 1 = $0E
   inc l
-  inc l
   call NextColumn	; col 2
   dec l
   ld a,d
@@ -4766,7 +4732,6 @@ DrawRockL1S7:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $03
-  dec l
   dec l
   call NextColumn	; col 3
   inc l
@@ -5022,7 +4987,6 @@ DrawRockL2S0:
   xor (hl)
   ld (hl),a		; col 0 row 30 = $02
   dec l
-  dec l
   call NextColumn	; col 1
   ld de,$100F
   ld a,e
@@ -5220,7 +5184,6 @@ DrawRockL2S0:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 31 = $C0
-  call NextColumn	; col 3
   ret
 DrawRockL2S1:
   dec l
@@ -5341,7 +5304,6 @@ DrawRockL2S1:
   ld a,e
   xor (hl)
   ld (hl),a		; col 0 row 30 = $01
-  dec l
   dec l
   call NextColumn	; col 1
   ld a,d
@@ -5658,7 +5620,6 @@ DrawRockL2S2:
   ld (hl),a		; col 0 row 29 = $01
   dec l
   dec l
-  dec l
   call NextColumn	; col 1
   ld a,d
   xor (hl)
@@ -5955,9 +5916,10 @@ DrawRockL2S3:
   ld a,d
   xor (hl)
   ld (hl),a		; col 0 row 27 = $01
-  ld a,l
-  sub $05		; skip 5 rows
-  ld l,a
+  dec l
+  dec l
+  dec l
+  dec l
   call NextColumn	; col 1
   ld a,d
   xor (hl)
@@ -6259,7 +6221,7 @@ DrawRockL2S4:
   xor (hl)
   ld (hl),a		; col 0 row 25 = $01
   ld a,l
-  sub $07		; skip 7 rows
+  sub $06		; skip 6 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -6552,7 +6514,7 @@ DrawRockL2S5:
   xor (hl)
   ld (hl),a		; col 0 row 23 = $01
   ld a,l
-  sub $09		; skip 9 rows
+  sub $08		; skip 8 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -6850,7 +6812,7 @@ DrawRockL2S6:
   xor (hl)
   ld (hl),a		; col 0 row 21 = $01
   ld a,l
-  sub $0B		; skip 11 rows
+  sub $0A		; skip 10 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -7147,7 +7109,7 @@ DrawRockL2S6:
   ret
 DrawRockL2S7:
   ld a,l
-  sub $20		; skip 32 rows
+  sub $1F		; skip 31 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -7278,7 +7240,6 @@ DrawRockL2S7:
   ld a,e
   xor (hl)
   ld (hl),a		; col 1 row 1 = $01
-  inc l
   inc l
   call NextColumn	; col 2
   ld a,d
@@ -7588,7 +7549,6 @@ DrawRockL3S0:
   xor (hl)
   ld (hl),a		; col 0 row 30 = $03
   dec l
-  dec l
   call NextColumn	; col 1
   inc l
   ld de,$6080
@@ -7774,9 +7734,6 @@ DrawRockL3S0:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 30 = $60
-  dec l
-  dec l
-  call NextColumn	; col 3
   ret
 DrawRockL3S1:
   ld bc,$7F01
@@ -7888,7 +7845,6 @@ DrawRockL3S1:
   ld a,c
   xor (hl)
   ld (hl),a		; col 0 row 30 = $01
-  dec l
   dec l
   call NextColumn	; col 1
   inc l
@@ -8057,7 +8013,6 @@ DrawRockL3S1:
   xor (hl)
   ld (hl),a		; col 2 row 30 = $30
   dec l
-  dec l
   call NextColumn	; col 3
   ld a,l
   add a,$08		; skip 8 rows
@@ -8184,7 +8139,6 @@ DrawRockL3S2:
   ld a,e
   xor (hl)
   ld (hl),a		; col 0 row 29 = $01
-  dec l
   dec l
   dec l
   call NextColumn	; col 1
@@ -8349,7 +8303,6 @@ DrawRockL3S2:
   xor (hl)
   ld (hl),a		; col 2 row 30 = $18
   dec l
-  dec l
   call NextColumn	; col 3
   ld a,l
   add a,$07		; skip 7 rows
@@ -8479,9 +8432,10 @@ DrawRockL3S3:
   ld a,d
   xor (hl)
   ld (hl),a		; col 0 row 27 = $01
-  ld a,l
-  sub $05		; skip 5 rows
-  ld l,a
+  dec l
+  dec l
+  dec l
+  dec l
   call NextColumn	; col 1
   inc l
   ld de,$8C70
@@ -8620,7 +8574,6 @@ DrawRockL3S3:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $0C
-  dec l
   dec l
   call NextColumn	; col 3
   ld a,l
@@ -8766,7 +8719,7 @@ DrawRockL3S4:
   xor (hl)
   ld (hl),a		; col 0 row 25 = $01
   ld a,l
-  sub $07		; skip 7 rows
+  sub $06		; skip 6 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -8914,7 +8867,6 @@ DrawRockL3S4:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $06
-  dec l
   dec l
   call NextColumn	; col 3
   inc l
@@ -9067,7 +9019,7 @@ DrawRockL3S5:
   xor (hl)
   ld (hl),a		; col 0 row 23 = $01
   ld a,l
-  sub $09		; skip 9 rows
+  sub $08		; skip 8 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -9211,7 +9163,6 @@ DrawRockL3S5:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $03
-  dec l
   dec l
   call NextColumn	; col 3
   inc l
@@ -9359,7 +9310,7 @@ DrawRockL3S6:
   xor (hl)
   ld (hl),a		; col 0 row 21 = $01
   ld a,l
-  sub $0B		; skip 11 rows
+  sub $0A		; skip 10 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -9501,7 +9452,6 @@ DrawRockL3S6:
   ld a,d
   xor (hl)
   ld (hl),a		; col 2 row 30 = $01
-  dec l
   dec l
   call NextColumn	; col 3
   inc l
@@ -9660,7 +9610,7 @@ DrawRockL3S7:
   xor (hl)
   ld (hl),a		; col 0 row 19 = $01
   ld a,l
-  sub $0D		; skip 13 rows
+  sub $0C		; skip 12 rows
   ld l,a
   call NextColumn	; col 1
   inc l
@@ -9793,7 +9743,6 @@ DrawRockL3S7:
   ld a,e
   xor (hl)
   ld (hl),a		; col 2 row 29 = $C1
-  dec l
   dec l
   dec l
   call NextColumn	; col 3

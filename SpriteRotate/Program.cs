@@ -190,6 +190,16 @@ namespace SpriteRotate
             }
         }
 
+        static bool IsAllZeroes(byte[] octets, int idx, int len)
+        {
+            for (int i = idx; i < idx + len; i++)
+            {
+                if (octets[i] != 0)
+                    return false;
+            }
+            return true;
+        }
+
         static void WriteSprite32x32Code(byte[] octets, StreamWriter writer)
         {
             const int cols = 4;
@@ -213,14 +223,14 @@ namespace SpriteRotate
             {
                 int col = n / rows;
                 bool order = (col % 2) == 0;
-                int row = order ? n - col * rows : rows - 1 - (n - col * rows);
+                int nrow = n - col * rows;  // 0..31
+                int row = order ? nrow : rows - 1 - nrow;
                 byte a = bytes[n];
 
-                //TODO: if first column is empty
-
-                if (a == 0)
+                if (a == 0 && nrow < 31)
                     skiprows++;
-                else 
+
+                if (a != 0)
                 {
                     if (skiprows > 0)
                     {
@@ -272,20 +282,23 @@ namespace SpriteRotate
                     writer.WriteLine("  xor (hl)");
                     writer.WriteLine($"  ld (hl),a\t\t; col {col} row {row} = ${a:X2}");
 
-                    if (n - col * rows < 31)
+                    if (nrow < 31)
                         skiprows = 1;
                 }
 
-                if (n % rows == rows - 1 && n < cols * rows - 1) // it was the last row
+                if (nrow == 31 && n < cols * rows - 1) // it was the last row
                 {
-                    if (skiprows > 0)
+                    bool lastColumnIsEmpty = (col == 2 && IsAllZeroes(octets, 3 * rows, rows));
+                    if (!lastColumnIsEmpty)
                     {
-                        WriteSpriteCodeSkipRows(skiprows, order, writer);
-                        skiprows = 0;
+                        if (skiprows > 0)
+                        {
+                            WriteSpriteCodeSkipRows(skiprows, order, writer);
+                            skiprows = 0;
+                        }
+
+                        writer.WriteLine($"  call NextColumn\t; col {col + 1}");
                     }
-                    
-                    //TODO: Check if next column is last and empty
-                    writer.WriteLine($"  call NextColumn\t; col {col + 1}");
                 }
             }
 
