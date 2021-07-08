@@ -1156,24 +1156,9 @@ InitWaveVars_1:
   ld a,d
   and 7
   ld (hl),a		; set asteroid Y hi
-  inc hl
-  ex de,hl
+  inc hl		; now HL = object record + 6, at X speed
 ; set X,Y velocity
-  call Random16		; get HL = random number
-  ex de,hl		; now HL = object record + 6, DE = random number
-  ld a,e
-  and $8F		; keep the sign bit and lower nibble
-  jp p,InitWaveVars_3	; jump if positive
-  or $F0		; extend the sign for negative number
-InitWaveVars_3:
-  ld (hl),a		; set X velocity
-  inc hl
-  ld a,d
-  and $8F		; keep the sign bit and lower nibble
-  jp p,InitWaveVars_4	; jump if positive
-  or $F0		; extend the sign for negative number
-InitWaveVars_4:
-  ld (hl),a		; set Y velocity
+  call SetRandomSpeed
   inc hl
   ex de,hl
 ; continue the loop
@@ -1242,22 +1227,18 @@ BreakAsteroid:
   inc de		; now DE = object record + 6, at X speed
   inc hl		; now HL = object record + 6, at X speed
 ; Set new directions for the two rocks
-  ex de,hl		; now HL = new rock, DE = old rock, +6, at X speed
-  ld c,(hl)		; get old X speed
-  inc hl
-  ld b,(hl)		; get old Y speed
-  dec hl
-  ld (hl),b		; old rock X speed = old Y speed
-  inc hl
-  ld a,c
-  cpl
-  ld (hl),a		; old rock Y speed = inverted old X speed
-  ld a,b		; get old Y speed
-  cpl
-  ld (de),a		; new rock X speed = inverted old Y speed
-  inc de
-  ld a,c		; get old X speed
-  ld (de),a		; new rock Y speed = old X speed
+  call SetRandomSpeed
+  ex de,hl		; now HL = new rock + 6, DE = old rock + 7, at Y speed
+  call SetRandomSpeed
+;   dec de		; now DE = old rock + 6
+;   ld a,(de)		; get speed X
+;   cpl
+;   ld (hl),a		; set speed X
+;   inc de
+;   inc hl
+;   ld a,(de)		; get speed Y
+;   cpl
+;   ld (hl),a		; set speed Y
 ; Update number of asteroids
   ld hl,CurAsteroids
   inc (hl)		; one added
@@ -1269,13 +1250,7 @@ BreakAsteroid_NS:	; no slot for second asteroid
   inc hl
   inc hl
   inc hl		; now HL = object record + 6, at X speed
-  ld c,(hl)		; get X speed
-  inc hl
-  ld a,(hl)		; get Y speed
-  ld (hl),c		; new Y speed = old X speed
-  dec hl
-  cpl
-  ld (hl),a		; new X speed = inverted old Y speed
+  call SetRandomSpeed
   jp BreakAsteroid_fin
 ; For a small rock, convert to shrapnel, set timer in Status
 BreakAsteroid_Sm:
@@ -1289,6 +1264,37 @@ BreakAsteroid_Sm:
 BreakAsteroid_fin:
   pop hl
   pop bc
+  ret
+
+; Set X,Y velocity to random values
+;   HL = object record + 6, at X speed
+SetRandomSpeed:
+  push de
+  ex de,hl		; now DE = object record + 6
+  call Random16		; get HL = random number
+  ex de,hl		; now HL = object record + 6, DE = random number
+  ld a,e
+  and $8F		; keep the sign bit and lower nibble
+  jp p,SetRandomSpeed_1	; jump if positive
+  or $F0		; extend the sign for negative number
+  sub 3			; -3..-18
+  jp SetRandomSpeed_2
+SetRandomSpeed_1:
+  add a,3		; 3..18
+SetRandomSpeed_2:
+  ld (hl),a		; set X velocity
+  inc hl
+  ld a,d
+  and $8F		; keep the sign bit and lower nibble
+  jp p,SetRandomSpeed_3	; jump if positive
+  or $F0		; extend the sign for negative number
+  sub 3			; -3..-18
+  jp SetRandomSpeed_4
+SetRandomSpeed_3:
+  add a,3		; 3..18
+SetRandomSpeed_4:
+  ld (hl),a		; set Y velocity
+  pop de
   ret
 
 ; Find a free asteroid slot
