@@ -169,18 +169,18 @@ GameRunningLoop:
   add a,$30			; '0'
   call DrawChar			; show CurAsteroids
 
+  ld a,(NumPlayers)
+  or a				; if in game mode
+  call nz,HitDectection		; Collision detection
+
   call ReadKeyboard
   call ProcessKeyboard
-
+  
   ld a,(NumPlayers)
   or a				; if in game mode
   call nz,UpdateShipFire	; Update ship firing
 
   call UpdateObjects		; Update position for all objects
-
-  ld a,(NumPlayers)
-  or a				; if in game mode
-  call nz,HitDectection		; Collision detection
 
   call DrawObjects
 

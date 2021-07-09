@@ -225,6 +225,34 @@ namespace SpriteRotate
                 bool order = (col % 2) == 0;
                 int nrow = n - col * rows;  // 0..31
                 int row = order ? nrow : rows - 1 - nrow;
+
+                if (nrow == 0 && col > 0) // it's the first row, not the first column
+                {
+                    bool lastColumnIsEmpty = (col == 3 && IsAllZeroes(octets, 3 * rows, rows));
+                    if (!lastColumnIsEmpty)
+                    {
+                        if (skiprows > 0)
+                        {
+                            if (bytes[n] == 0) // the new column has zero byte at the column start
+                            {
+                                skiprows--;
+                                if (skiprows > 0)
+                                    WriteSpriteCodeSkipRows(skiprows, !order, writer);
+                                writer.WriteLine("  \t\t\t; skipping zero byte");
+                                writer.WriteLine($"  call NextColumn\t; col {col}");
+                                writer.WriteLine("  \t\t\t; skipping zero byte");
+                                skiprows = 0;
+                                continue; // skipping this zero byte at the column start
+                            }
+
+                            WriteSpriteCodeSkipRows(skiprows, !order, writer);
+                            skiprows = 0;
+                        }
+
+                        writer.WriteLine($"  call NextColumn\t; col {col}");
+                    }
+                }
+
                 byte a = bytes[n];
 
                 if (a == 0 && nrow < 31)
@@ -284,21 +312,6 @@ namespace SpriteRotate
 
                     if (nrow < 31)
                         skiprows = 1;
-                }
-
-                if (nrow == 31 && n < cols * rows - 1) // it was the last row
-                {
-                    bool lastColumnIsEmpty = (col == 2 && IsAllZeroes(octets, 3 * rows, rows));
-                    if (!lastColumnIsEmpty)
-                    {
-                        if (skiprows > 0)
-                        {
-                            WriteSpriteCodeSkipRows(skiprows, order, writer);
-                            skiprows = 0;
-                        }
-
-                        writer.WriteLine($"  call NextColumn\t; col {col + 1}");
-                    }
                 }
             }
 
