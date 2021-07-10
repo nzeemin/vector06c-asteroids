@@ -2,6 +2,8 @@
 ; Import declarations from asteroid0.asm
   INCLUDE "asteroid0.inc"
 
+WaveTimerVal	EQU	60
+
 ;----------------------------------------------------------------------------
 
   ORG $0240
@@ -83,8 +85,7 @@ Start:
 ;   ld a,$E0
 ;   ld (CurrentPlaneHi),a
 ;   call SwitchToPlane
-
-;   ld b,8
+;   ld b,60
 ; Test_H0:
 ;   push bc
 ;   call UpdateObjects		; Update position for all objects
@@ -96,9 +97,8 @@ Start:
 ;   pop bc
 ;   dec b
 ;   jp nz,Test_H0
-;   call ClearPlane012	; Clear the whole screen
+;   call ClearPlane0123	; Clear the whole screen
 ;   call DrawObjects	; draw the asteroid
-
 ; Test_H1:
 ;   ld a,1
 ;   ld (ShipShotObjects),a
@@ -109,6 +109,8 @@ Start:
 ;   ld h,a
 ;   ld de,$FAAB		; -$0555..$0AAA
 ;   add hl,de
+;   ld a,h
+;   or a
 ;   jp m,Test_H1R		; less than 0 => repeat
 ;   ld (ShipShotObjects+2),hl	; X
 ;   call Random16
@@ -116,10 +118,9 @@ Start:
 ;   and 7
 ;   ld h,a
 ;   ld (ShipShotObjects+4),hl	; Y
-
 ;   ld hl,AstObjects+2
 ;   ld de,ShipShotObjects+2
-;   ld a,128
+;   ld a,130
 ;   call HitTest
 ;   jp c,Test_H2
 ;   ld a,$C0
@@ -133,6 +134,7 @@ Start:
 ;   jp Test_H1
 
 InitGame:
+  call ResetAllObjects
   call InitGameVars	; Initialize various game variables
 
   call DrawTitles	; Draw the titles for demo mode
@@ -141,10 +143,10 @@ InitGame:
   ld hl,SPressToStart
   call DrawString
 
-;  ld a,6			; Number of asteroids for the demo screen
-;  ld (AstPerWave),a
-  call InitWaveVars
+  call InitWaveVars		; Create wave for the demo mode
 
+  call WaitKeyUp
+  
 ;  call DrawShipLives	;TEST
 ;  call DrawPlayerScore	;TEST
 
@@ -187,14 +189,30 @@ GameRunningLoop:
   ld a,(NumPlayers)
   or a
   jp z,GameRunningLoop_1	; jump if not in game mode
-; In the demo mode, check if the wave ended
+; In game mode, check if the wave ended
   ld a,(CurAsteroids)
   or a				; do we have any rocks on the screen?
   jp nz,GameRunningLoop_2
-  call InitWaveVars		; start the next wave
+; Wave finished, check new wave timer
+  ld a,(WaveTimer)
+  or a
+  jp nz,GameRunningLoop_0	; wave timer is running => jump
+; Wave just finished, start the timer
+  ld a,WaveTimerVal
+  ld (WaveTimer),a
+  ld hl,WaveNumber
+  inc (hl)
+  call DrawWaveSign		; show wave starting sign
   jp GameRunningLoop_2
-GameRunningLoop_1:		; in the game mode
-; Check if Fire button pressed to start the game
+GameRunningLoop_0:		; wave timer is running
+  dec a
+  ld (WaveTimer),a
+  jp nz,GameRunningLoop_2
+  call InitWaveVars		; start the next wave
+  call ClearWaveSign		; remove wave starting sign
+  jp GameRunningLoop_2
+GameRunningLoop_1:		; in demo mode
+; In demo mode, check if Fire button pressed to start the game
   ld a,(FireSw)
   or a
   call nz,PrepareNewGame	; Start the game
@@ -225,14 +243,33 @@ Start_A:
 ; Called from the game loop to start a new game
 PrepareNewGame:
   call ClearPlane0123		; clear the whole screen
-;TODO: Deactivate all rocks
+  call ResetAllObjects
   call InitGameVars
-  call InitWaveVars
+  ld a,WaveTimerVal
+  ld (WaveTimer),a		; Wave tmer will count down to 0 then new wave will be started
   ld a,1
   ld (ShipStatus),a		; activate the ship
   ld (NumPlayers),a		; set the game mode flag
+  ld (WaveNumber),a		; starting the first wave
   call CenterShip		; Center ship on display and zero velocity
-  ret		; return to the game loop
+  call DrawWaveSign		; show wave starting sign
+  ret				; return to the game loop
+
+DrawWaveSign:
+  ld hl,$8CE0
+  ld (TextAddr),hl
+  ld hl,SWaveSign
+  call DrawString
+  ld a,(WaveNumber)
+  add a,$30			; '0'
+  call DrawChar
+  ret
+ClearWaveSign:
+  ld hl,$8CE0
+  ld (TextAddr),hl
+  ld hl,SWaveSpace
+  call DrawString
+  ret
 
 LastIntCount:	db 0
 CurrentPlaneHi:	db $E0	; Current plane address hi byte
@@ -240,6 +277,8 @@ CurrentPlaneHi:	db $E0	; Current plane address hi byte
 STitle1:	DEFM "ORIGINAL GAME 1979 ATARI INC",0
 STitle2:	DEFM "VECTOR-06C DEMO VERSION NZEEMIN",0
 SPressToStart:	DEFM "PRESS FIRE TO START",0
+SWaveSign:	DEFM "WAVE ",0
+SWaveSpace:	DEFM "      ",0
 SGameOver:	DEFM "GAME OVER",0
 
 DrawTitles:
@@ -306,8 +345,9 @@ ShipXAccel:		db	0
 ShipYAccel:		db	0
 ScrTimer:		db	0	; Countdown timer for saucer spawn
 ScrTmrReload:		db	0	; Reload value for saucer timer
-AstPerWave:		db	2
+WaveNumber:		db	0
 CurAsteroids:		db	0	; Current number of asteroids
+WaveTimer:		db	0	; Timer used before new wave
 
 ; Object record format:
 ; + 0:      Status byte: 0 = Not active
@@ -334,32 +374,10 @@ SaucerXSpeed:		db	0
 SaucerYSpeed:		db	0
 ; Asteroid objects, 26 records
 MaxAsteroids EQU 26
-AstObjects:		db	0, 4, 0,0,0,0, 0,0
+AstObjects:
+REPT MaxAsteroids
 			db	0, 4, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
-			db	0, 3, 0,0,0,0, 0,0
+ENDM
 ; Ship bullet objects, 4 records
 ShipShotObjects:	db	0, 5, 0,0,0,0, 0,0
 			db	0, 5, 0,0,0,0, 0,0
@@ -401,9 +419,8 @@ ObjectsHitRadius:
 
 ; Initialize Game Variables
 InitGameVars:
-  ld a,4		; Prepare to start wave 1 with 4 asteroids (+2 later).
-  ld (AstPerWave),a
   xor a
+  ld (WaveNumber),a
   ld (ShipStatus),a
   ld (ShpShotTimer),a
   ld (PlayerScore),a
@@ -509,11 +526,15 @@ HitDectection:
 HitDectection_R1:
   ld a,(hl)		; get rock object status
   or a
-;TODO: skip shrapnel objects
   jp z,HitDectection_RS	; not alive, skipping
   push hl		; save the rock object address
+  inc hl		; HL = rock object + 1, at Type
+; skip shrapnel objects
+  ld a,(hl)		; get Type
+  and 7			; 0..7
+  cp 5			; check for temporary objects
+  jp nc,HitDectection_SN  ; skip
 ;TODO: get hit box size for this rock type
-  inc hl
   inc hl		; HL = rock object + 2, at X lo
   ex de,hl		; now DE = rock object + 2
 ;  push de		; save the rock object address + 2
@@ -599,7 +620,7 @@ HitTest:
 ; check if dX < hit distance
   jp nz,HitTest_1	; Z=0 => dX > 255 => not a hit
   ld a,l
-  sub b
+  cp b			; compare dX lo to hit distance
   jp c,HitTest_2	; dX < hit distance => within the hit box by X, let's check by Y
 ; distance >= hit distance => not a hit
 HitTest_1:
@@ -622,11 +643,11 @@ HitTest_2:
   call SubAbs		; HL = abs(Y2 - Y1); Z=1 if H is zero
   pop bc		; restore B = hit distance
 ; check if dY < hit distance
-  ret nz		; Z=0 => dY > 255 => not a hit
+  ret nz		; Z=0 => dY > 255 => not a hit, Carry=0
   ld a,l
-  sub b
-  ret nc		; dY >= hit distance => not a hit, Carry=0
-  ret			; dy < hit distance => within the hit box, Carry=1
+  cp b			; compare dY lo to hit distance
+;  ret nc		; if Carry=0 then dY >= hit distance => not a hit
+  ret			; if Carry=1 then dy < hit distance => within the hit box
 
 ; Subtract and get absolute value
 ; Result HL = abs(DE - BC); returns Z=1 if H is zero - result is 0..255
@@ -638,7 +659,7 @@ SubAbs:
   ld a,d
   sbc a,b		; sub hi with carry
   ld h,a
-  ret nc		; no Carry means we have a positive value
+  ret nc		; no Carry means we have a positive value or zero
 ; calculate HL = BC - DE
   ld a,c
   sub e			; sub lo
@@ -1119,11 +1140,32 @@ SaucerReset:
   ld (SaucerYSpeed),a
   ret
 
+; Deactivate all asteroids
+ResetAllObjects:
+  ld hl,Objects
+  ld b,MaxObjects
+  ld de,$0008
+  xor a
+ResetAllObjects_0:
+  ld (hl),a		; set Status to inactive
+  add hl,de
+  dec b
+  jp nz,ResetAllObjects_0
+  ld (CurAsteroids),a	; reset the rocks counter
+  ret
+
 ; Initialize Asteroid Wave Variables
 InitWaveVars:
+  ld a,(WaveNumber)
+  or a			; wave 0 = demo
+  jp nz,InitWaveVars_0
+  ld a,2
+InitWaveVars_0:
+; Calculate number of rocks: L1 = 3, L2 = 4, L3=5 etc.
+  inc a
+  inc a
+  ld b,a		; number of rocks to create
   ld de,AstObjects
-  ld a,(AstPerWave)
-  ld b,a		; counter
 InitWaveVars_1:
   push bc
   ld hl,CurAsteroids
@@ -1230,15 +1272,6 @@ BreakAsteroid:
   call SetRandomSpeed
   ex de,hl		; now HL = new rock + 6, DE = old rock + 7, at Y speed
   call SetRandomSpeed
-;   dec de		; now DE = old rock + 6
-;   ld a,(de)		; get speed X
-;   cpl
-;   ld (hl),a		; set speed X
-;   inc de
-;   inc hl
-;   ld a,(de)		; get speed Y
-;   cpl
-;   ld (hl),a		; set speed Y
 ; Update number of asteroids
   ld hl,CurAsteroids
   inc (hl)		; one added
@@ -1411,6 +1444,13 @@ WaitAnyKey_1:		; Wait for key press
   inc hl
   inc (hl)		; increment hi
   jp WaitAnyKey_1	; Wait for press
+
+; Wait until no key pressed - to put after ReadKeyboard calls to prevent double-reads of the same key
+WaitKeyUp:
+  call ReadKeyboard
+  or a
+  jp nz,WaitKeyUp	; Wait for unpress
+  ret
 
 ; Returns: A=key code, $00 no key; Z=0 for key, Z=1 for no key
 ; Key codes: Fire=$01, Left=$02, Right=$04, Thrust=$08, Hyper=$10, Enter/Esc=$20
