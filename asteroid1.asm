@@ -1,9 +1,10 @@
 
 ; Import declarations from asteroid0.asm
-  INCLUDE "asteroid0.inc"
+INCLUDE "asteroid0.inc"
 
-WaveTimerVal	EQU	60
-BulletTimerVal	EQU	28
+BulletTimerVal	EQU	28	; Bullet lifespan, gameloop cycles
+WaveTimerVal	EQU	60	; Time before new wave, gameloop cycles
+ShipHitTimerVal	EQU	40	; Time for ship explosion, gameloop cycles
 
 ;----------------------------------------------------------------------------
 
@@ -139,17 +140,12 @@ InitGame:
   call InitGameVars	; Initialize various game variables
 
   call DrawTitles	; Draw the titles for demo mode
-  ld hl,$86E0
-  ld (TextAddr),hl
-  ld hl,SPressToStart
-  call DrawString
+  ld hl,SAPressToStart
+  call DrawAString
 
   call InitWaveVars		; Create wave for the demo mode
 
   call WaitKeyUp
-  
-;  call DrawShipLives	;TEST
-;  call DrawPlayerScore	;TEST
 
 ; Game loop start
 GameRunningLoop:
@@ -179,9 +175,37 @@ GameRunningLoop:
   call ReadKeyboard
   call ProcessKeyboard
   
+  ld a,(ShipHitTimer)
+  or a
+  jp z,GameRunningLoop_3	; = 0, jump
+; ShipHitTimer non-zero - ship explosion
+  jp p,GameRunningLoop_2	; > 0, jump
+; ShipHitTimer < 0, this is a flag to start the explosion
+  call DoShipExplosion
+  jp GameRunningLoop_4
+GameRunningLoop_2:
+; ShipHitTimer > 0 - ship explosion is in progress
+  dec a
+  ld (ShipHitTimer),a
+  jp nz,GameRunningLoop_4
+; ShipHitTimer = 0 - ship debris gone
+  ld a,(PlayerShips)
+  or a				; do we have lives left?
+  jp z,GameRunningLoop_GameOver	; no ships left, jump
+; start with new ship
+  ld a,1
+  ld (ShipStatus),a		; re-activate the ship
+  call CenterShip
+  jp GameRunningLoop_4
+GameRunningLoop_GameOver:
+  xor a
+  ld (NumPlayers),a		; switch to demo mode
+  jp GameRunningLoop_4
+GameRunningLoop_3:
   ld a,(NumPlayers)
   or a				; if in game mode
   call nz,UpdateShipFire	; Update ship firing
+GameRunningLoop_4:
 
   call UpdateObjects		; Update position for all objects
 
@@ -189,39 +213,39 @@ GameRunningLoop:
 
   ld a,(NumPlayers)
   or a
-  jp z,GameRunningLoop_1	; jump if not in game mode
+  jp z,GameRunningLoop_B	; jump if not in game mode
+; In game mode, update indicators
+;TODO: Update score/lives indicators only if needed
+  call DrawShipLives
+  call DrawPlayerScore
 ; In game mode, check if the wave ended
   ld a,(CurAsteroids)
   or a				; do we have any rocks on the screen?
-  jp nz,GameRunningLoop_2
+  jp nz,GameRunningLoop_C
 ; Wave finished, check new wave timer
   ld a,(WaveTimer)
   or a
-  jp nz,GameRunningLoop_0	; wave timer is running => jump
+  jp nz,GameRunningLoop_A	; wave timer is running => jump
 ; Wave just finished, start the timer
   ld a,WaveTimerVal
   ld (WaveTimer),a
   ld hl,WaveNumber
   inc (hl)
   call DrawWaveSign		; show wave starting sign
-  jp GameRunningLoop_2
-GameRunningLoop_0:		; wave timer is running
+  jp GameRunningLoop_C
+GameRunningLoop_A:		; wave timer is running
   dec a
   ld (WaveTimer),a
-  jp nz,GameRunningLoop_2
+  jp nz,GameRunningLoop_C
   call InitWaveVars		; start the next wave
   call ClearWaveSign		; remove wave starting sign
-  jp GameRunningLoop_2
-GameRunningLoop_1:		; in demo mode
+  jp GameRunningLoop_C
+GameRunningLoop_B:		; in demo mode
 ; In demo mode, check if Fire button pressed to start the game
   ld a,(FireSw)
   or a
   call nz,PrepareNewGame	; Start the game
-GameRunningLoop_2:
-
-;TODO: if game mode
-;TODO: Update score/lives indicators if needed
-;TODO: end if game mode
+GameRunningLoop_C:
 
 ; Save interrupt counter value
   ld a,(IntCount)
@@ -253,45 +277,74 @@ PrepareNewGame:
   ld (NumPlayers),a		; set the game mode flag
   ld (WaveNumber),a		; starting the first wave
   call CenterShip		; Center ship on display and zero velocity
-  call DrawWaveSign		; show wave starting sign
-  ret				; return to the game loop
+  jp DrawWaveSign		; show wave starting sign
+;  ret				; return to the game loop
+
+; Mark the ship not active; activate four debris objects;
+; copy ship X,Y position to each debris object X,Y
+DoShipExplosion:
+  ld hl,PlayerShips
+  dec (hl)		; one live less
+  jp nz,DoShipExplosion_0
+  ld hl,SAGameOver
+  call DrawAString
+DoShipExplosion_0:
+  ld a,ShipHitTimerVal	; time to show the explosion
+  ld (ShipHitTimer),a	; set the timer
+  xor a
+  ld (ShipStatus),a	; set Status not active
+; prepare debris objects
+  ld bc,$0420		; B = number of debris objects, C = status value for debris objects
+  ld hl,ShipDebrisObjects
+DoShipExplosion_1:
+  ld (hl),c		; set status value
+  inc hl
+  inc hl		; now HL = debris object + 2, at X lo
+  ld de,ShipXPos	; start address for copying
+REPT 4			; copy 4 bytes
+  ld a,(de)
+  inc de
+  ld (hl),a
+  inc hl
+ENDM
+  inc hl
+  inc hl		; now HL points to the next object record
+  dec b
+  jp nz,DoShipExplosion_1
+  ret			; return to the game loop
 
 DrawWaveSign:
-  ld hl,$8CE0
-  ld (TextAddr),hl
-  ld hl,SWaveSign
-  call DrawString
+  ld hl,SAWaveSign
+  call DrawAString
   ld a,(WaveNumber)
   add a,$30			; '0'
-  call DrawChar
-  ret
+  jp DrawChar
 ClearWaveSign:
-  ld hl,$8CE0
-  ld (TextAddr),hl
-  ld hl,SWaveSpace
-  call DrawString
-  ret
+  ld hl,SAWaveSpace
+  jp DrawAString
 
 LastIntCount:	db 0
-CurrentPlaneHi:	db $E0	; Current plane address hi byte
+CurrentPlaneHi:	db $E0	; Current plane address hi byte: $E0, $C0, $A0
 
-STitle1:	DEFM "ORIGINAL GAME 1979 ATARI INC",0
-STitle2:	DEFM "VECTOR-06C DEMO VERSION NZEEMIN",0
-SPressToStart:	DEFM "PRESS FIRE TO START",0
-SWaveSign:	DEFM "WAVE ",0
-SWaveSpace:	DEFM "      ",0
-SGameOver:	DEFM "GAME OVER",0
+SATitle1:	dw $821C
+		DEFM "ORIGINAL GAME 1979 ATARI INC",0
+SATitle2:	dw $800C
+		DEFM "VECTOR-06C DEMO VERSION NZEEMIN",0
+SAPressToStart:	dw $86E0
+		DEFM "PRESS FIRE TO START",0
+SAWaveSign:	dw $8CE0
+		DEFM "WAVE ",0
+SAWaveSpace:	dw $8CE0
+		DEFM "      ",0
+SAGameOver:	dw $8BC0
+		DEFM "GAME OVER",0
 
+; Draw two title strings
 DrawTitles:
-  ld hl,$821C
-  ld (TextAddr),hl
-  ld hl,STitle1
-  call DrawString
-  ld hl,$800C
-  ld (TextAddr),hl
-  ld hl,STitle2
-  call DrawString
-  ret
+  ld hl,SATitle1
+  call DrawAString
+  ld hl,SATitle2
+  jp DrawAString
 
 ProcessKeyboard:
   ld c,a
@@ -331,9 +384,9 @@ ProcessKeyboard_2:
 ;----------------------------------------------------------------------------
 AstroCodeBeg:
 
-ThrustSw:		db	0
-HyprSpcSw:		db	0
 FireSw:			db	0	; Fire button status
+ThrustSw:		db	0	; Thrust button status
+HyprSpcSw:		db	0	; Hyper button status
 
 NumPlayers:		db	0	; 0 = Not playing, 1 = In the Game
 PlayerScore:		db	0,0	; Player score as two BCD bytes
@@ -349,6 +402,7 @@ ScrTmrReload:		db	0	; Reload value for saucer timer
 WaveNumber:		db	0
 CurAsteroids:		db	0	; Current number of asteroids
 WaveTimer:		db	0	; Timer used before new wave
+ShipHitTimer:		db	0	; Timer used on ship hit
 
 ; Object record format:
 ; + 0:      Status byte: 0 = Not active
@@ -540,7 +594,7 @@ HitDectection_R1:
 ; get hit box size for this rock type
   call GetHitRadius	; now A = hit distance
   ld (HitDectection_BH+1),a ; set as the parameter
-;  push de		; save the rock object address + 2
+  ld (HitDectection_SH+1),a ; set as the parameter
 ; Check this rock against all bullets
 ;TODO: check UFO bullets too
   ld hl,ShipShotObjects
@@ -576,18 +630,30 @@ HitDectection_BS:
   add hl,de		; to the next bullet record
   jp HitDectection_B1
 HitDectection_BE:	; end of loop by bulets
-;  pop de		; restore the rock object address + 2
-; ; Check this rock against the ship object
-;   ld hl,ShipXPos
-;   ld a,128+64		;STUB for hit box size
-;   call HitTest		; returns Carry=1 for hit
-;   jp nc,HitDectection_SN
-; ; We have a hit between the ship and the rock
-; ;TODO: explode the ship
-;   pop hl		; restore the rock object address
-;   xor a
-;   ld (hl),a		; deactivate the rock object
-;   jp HitDectection_RS
+  ld a,(ShipStatus)
+  or a			; is the ship active?
+  jp z,HitDectection_SN	; skip if no ship
+  pop de		; restore the rock object address
+  push de		; and save the rock object address again
+  inc de
+  inc de
+  push bc		; save counter B
+; Check this rock against the ship object
+  ld hl,ShipXPos
+HitDectection_SH:
+  ld a,128+64		; hit radius, mutable parameter!
+  call HitTest		; returns Carry=1 for hit
+  jp nc,HitDectection_SE
+; We have a hit between the ship and the rock
+  pop bc		; restore B
+  pop hl		; restore the rock object address
+  xor a
+  ld (hl),a		; deactivate the rock object
+  dec a
+  ld (ShipHitTimer),a	; set the flag for explosion
+  jp HitDectection_RS
+HitDectection_SE:
+  pop bc		; restore B
 HitDectection_SN:
   pop hl		; restore the rock object address
 HitDectection_RS:
@@ -1360,30 +1426,6 @@ GetFreeAstSlot_1:
   or a			; set Z=0
   ret
 
-; Mark the ship not active; activate four debris objects;
-; copy ship X,Y position to each debris object X,Y
-DoShipExplosion:
-  xor a
-  ld (ShipStatus),a	; set not active
-  ld bc,$0420		; B = number of debris objects, C = status value for debris objects
-  ld hl,ShipDebrisObjects
-DoShipExplosion_1:
-  ld (hl),c		; set status value
-  inc hl
-  inc hl		; now HL = debris object + 2, at X lo
-  ld de,ShipXPos	; start address for copying
-REPT 4			; copy 4 bytes
-  ld a,(de)
-  inc de
-  ld (hl),a
-  inc hl
-ENDM
-  inc hl
-  inc hl		; now HL points to the next object record
-  dec b
-  jp nz,DoShipExplosion_1
-  ret
-
 DrawPlayerScore:
   ld hl,$80FF		; screen address
   ld (TextAddr),hl
@@ -1392,13 +1434,16 @@ DrawPlayerScore:
   ret
 
 DrawShipLives:
-  ld a,(PlayerShips)
-  ld b,a		; now B = ships to draw
-  ld a,5		; max ships
-  sub b
-  ld c,a		; now C = spaces to draw
   ld hl,$81F0		; screen address
   ld (TextAddr),hl
+  ld c,5		; max ships
+  ld a,(PlayerShips)
+  or a			; no ships left?
+  jp z,DrawShipLives_2
+  ld b,a		; now B = ships to draw
+  ld a,c
+  sub b
+  ld c,a		; now C = spaces to draw
 DrawShipLives_1:
   ld a,$2F		; ship symbol
   call DrawChar
@@ -1510,6 +1555,16 @@ ReadKeyboard_map:
 
 TextAddr:  DW  $A0FF  ; Address on the screen to draw next char
 
+; Draw string prefixed with address on the screen
+;   HL = string addr, prefixed with screen addr
+DrawAString:
+  ld e,(hl)		; get addr lo
+  inc hl
+  ld d,(hl)		; get addr hi
+  inc hl
+  ex de,hl
+  ld (TextAddr),hl	; set the screen addr
+  ex de,hl
 ; Draw string on screen using Font
 ;   HL = string addr
 DrawString:
