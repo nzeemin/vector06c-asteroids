@@ -3,6 +3,7 @@
   INCLUDE "asteroid0.inc"
 
 WaveTimerVal	EQU	60
+BulletTimerVal	EQU	28
 
 ;----------------------------------------------------------------------------
 
@@ -407,10 +408,10 @@ DrawObjsXYShift:
 ; Object's hit radius table to use in collision detection
 ObjectsHitRadius:
   db	64		; 0 - ship
-  db	30		; 1 - sauser
-  db	32		; 2 - S-size rock
-  db	64		; 3 - M-size rock
-  db	128		; 4 - L-size rock
+  db	36		; 1 - sauser
+  db	96		; 2 - S-size rock
+  db	120		; 3 - M-size rock
+  db	160		; 4 - L-size rock
   db	0		; 5 - ship or sauser bullets
   db	0		; 6 - shrapnel
   db	0		; 7 - debris
@@ -457,7 +458,7 @@ UpdateShipFire_2:
   ret			; no free bullet slots => exit
 UpdateShipFire_3:	; found free slot, HL = object record
 ; Create new bullet
-  ld a,28		; active status + bullet timer value
+  ld a,BulletTimerVal	; active status + bullet timer value
   ld (hl),a		; activate the bullet
   inc hl
   inc hl		; now HL = object record + 2, at X lo
@@ -534,9 +535,11 @@ HitDectection_R1:
   and 7			; 0..7
   cp 5			; check for temporary objects
   jp nc,HitDectection_SN  ; skip
-;TODO: get hit box size for this rock type
   inc hl		; HL = rock object + 2, at X lo
   ex de,hl		; now DE = rock object + 2
+; get hit box size for this rock type
+  call GetHitRadius	; now A = hit distance
+  ld (HitDectection_BH+1),a ; set as the parameter
 ;  push de		; save the rock object address + 2
 ; Check this rock against all bullets
 ;TODO: check UFO bullets too
@@ -551,7 +554,8 @@ HitDectection_B1:
   inc hl
   inc hl		; HL = bullet object + 2, at X lo
 ; check if we have the hit
-  ld a,128		;STUB for hit box size
+HitDectection_BH:
+  ld a,132		; hit radius, mutable parameter!
   call HitTest		; returns Carry=1 for hit
   jp nc,HitDectection_BN
 ; We have a hit between the bullet and the rock
@@ -591,7 +595,16 @@ HitDectection_RS:
   add hl,de		; to the next record
   dec b
   jp nz,HitDectection_R1  ; continue loop by rocks
+  ret
 
+GetHitRadius:
+  ld hl,ObjectsHitRadius
+  add a,l
+  ld l,a
+  jp nc,GetHitRadius_1
+  inc h
+GetHitRadius_1:
+  ld a,(hl)
   ret
 
 ; Check if we have a collision
