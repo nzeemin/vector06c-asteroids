@@ -382,17 +382,15 @@ ProcessKeyboard_2:
   ret
 
 ;----------------------------------------------------------------------------
-AstroCodeBeg:
 
-FireSw:			db	0	; Fire button status
-ThrustSw:		db	0	; Thrust button status
-HyprSpcSw:		db	0	; Hyper button status
+FireSw		EQU $0100	; Fire button status
+ThrustSw	EQU $0101	; Thrust button status
+HyprSpcSw	EQU $0102	; Hyper button status
 
 NumPlayers:		db	0	; 0 = Not playing, 1 = In the Game
 PlayerScore:		db	0,0	; Player score as two BCD bytes
 ShipsPerGame:		db	3
 PlayerShips:		db	3	; Current number of player ships
-ShpShotTimer:		db	0
 ShipDir:		db	8	; Ship direction 0..31; 0 = W, 8 = N, 16 = E, 24 = S
 ShipBulletSR:		db	0	; Counter to limit ship fire rate
 ShipXAccel:		db	0
@@ -477,10 +475,25 @@ InitGameVars:
   xor a
   ld (WaveNumber),a
   ld (ShipStatus),a
-  ld (ShpShotTimer),a
   ld (PlayerScore),a
   ld (PlayerScore+1),a
   ld (CurAsteroids),a
+  ld a,3
+  ld (PlayerShips),a
+  ret
+
+; Deactivate all objects
+ResetAllObjects:
+  ld hl,Objects
+  ld b,MaxObjects
+  ld de,$0008
+  xor a
+ResetAllObjects_0:
+  ld (hl),a		; set Status to inactive
+  add hl,de
+  dec b
+  jp nz,ResetAllObjects_0
+  ld (CurAsteroids),a	; reset the rocks counter
   ret
 
 UpdateShipFire:
@@ -618,6 +631,7 @@ HitDectection_BH:
   ld (hl),a		; deactivate the bullet object
   pop bc		; restore counters B, C
   pop hl		; restore the rock object address
+  call DoAsteroidPoints	; give player points for crashing this asteroid
   call BreakAsteroid    ; split the rock
   jp HitDectection_RS	; continue the loop by rocks
 HitDectection_BN:
@@ -647,10 +661,17 @@ HitDectection_SH:
 ; We have a hit between the ship and the rock
   pop bc		; restore B
   pop hl		; restore the rock object address
-  xor a
-  ld (hl),a		; deactivate the rock object
-  dec a
+; convert the asteroid object to shrapnel
+  inc hl
+  ld a,6		; type = shrapnel
+  ld (hl),a		; set Type
+  dec hl		; now HL = object record + 0, at Status
+  ld a,8		; timer value
+  ld (hl),a		; set Status as a timer
+  ld a,$FF
   ld (ShipHitTimer),a	; set the flag for explosion
+  ld hl,CurAsteroids
+  dec (hl)		; one less
   jp HitDectection_RS
 HitDectection_SE:
   pop bc		; restore B
@@ -671,6 +692,27 @@ GetHitRadius:
   inc h
 GetHitRadius_1:
   ld a,(hl)
+  ret
+
+; Give player some points for the crashed asteroid
+;   HL = asteroid object record
+DoAsteroidPoints:
+  push hl
+  inc hl
+  ld a,(hl)	; get Type
+  and 7
+  ld hl,PlayerScore
+  add a,(hl)
+  daa
+  ld (hl),a
+  jp nc,DoAsteroidPoints_1
+  inc hl
+  ld a,(hl)
+  inc a
+  daa
+  ld (hl),a
+DoAsteroidPoints_1:
+  pop hl
   ret
 
 ; Check if we have a collision
@@ -1217,20 +1259,6 @@ SaucerReset:
   ld (ScrStatus),a	; Clear other saucer variables.
   ld (SaucerXSpeed),a
   ld (SaucerYSpeed),a
-  ret
-
-; Deactivate all asteroids
-ResetAllObjects:
-  ld hl,Objects
-  ld b,MaxObjects
-  ld de,$0008
-  xor a
-ResetAllObjects_0:
-  ld (hl),a		; set Status to inactive
-  add hl,de
-  dec b
-  jp nz,ResetAllObjects_0
-  ld (CurAsteroids),a	; reset the rocks counter
   ret
 
 ; Initialize Asteroid Wave Variables
