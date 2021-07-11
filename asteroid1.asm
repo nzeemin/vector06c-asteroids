@@ -953,8 +953,9 @@ DrawRockLProc_1:	; now HL = address in the table
   ld c,(hl)		; get lo
   inc hl
   ld b,(hl)		; get hi; now BC = sprite drawing code address
-  push bc		; store the sprite drawing code address to call
   ex de,hl		; now HL = screen address
+  call MarkColumnDirty
+  push bc		; store the sprite drawing code address to call
   ret			; jumping to the sprite drawing code
 DrawRockLAddrs:
   dw	DrawRockL0S0, DrawRockL0S1, DrawRockL0S2, DrawRockL0S3
@@ -983,6 +984,7 @@ DrawBulletProc:
   ex de,hl		; now HL = screen address
   xor (hl)
   ld (hl),a
+  call MarkColumnDirty
   ret
 
 DrawDebrisProc:
@@ -1643,6 +1645,19 @@ DrawChar_next:
   pop hl
   ret
 
+ClearPlane3:
+  xor a
+  ld hl,$8000
+  ld b,0
+ClearPlane3_1:
+REPT 32
+  ld (hl),a
+  inc hl
+ENDM
+  dec b
+  jp nz,ClearPlane3_1
+  ret
+
 ; Clear the whole screen
 ClearPlane0123:
   ld hl,$0000
@@ -1651,9 +1666,7 @@ ClearPlane0123:
   call ClearPlane
   ld hl,$C000
   call ClearPlane
-ClearPlane3:
-  ld hl,$A000
-  jp ClearPlane
+  jp ClearPlane3
 ;
 ; Clear plane selected by A = plane address hi byte
 ClearPlaneA:
@@ -1661,25 +1674,44 @@ ClearPlaneA:
   ld h,a
   ld l,$00
 ClearPlane:
-  ld (ClearPlane_0+1),hl
-  xor a
-  ld h,a
-  ld l,a
-  ld d,a
-  ld e,a
-  add hl,sp
-  ld (ClearPlane_fin+1),hl
-  ld b,$10
-ClearPlane_0:
-  ld sp,$0000		; mutable parameter
+  ex de,hl		; now DE = screen address
+  ld hl,$0000
+  add hl,sp		; now HL = current SP
+  ld (ClearPlane_fin+1),hl ; save SP to restore at the end
+  ex de,hl		; now HL = screen address
+  ld sp,hl		; set SP to screen address
+  ex de,hl		; now DE = screen address
+  ld b,32
 ClearPlane_1:
-REPT 256
-  push de
+; check dirty flag for the column
+  ld a,d		; get addr hi
+  dec a			; $A0..$FF
+  ld l,a
+  ld h,$7F		; dirty flags table = $7FA0..$7FFF
+  ld a,(hl)		; get dirty flag for the column
+  or a
+  jp nz,ClearPlane_3	; dirty => clean the column
+; the column is clean, skip it
+  ex de,hl		; now HL = screen address
+  dec h			; HL = screen address - $0100
+  ld sp,hl
+  ex de,hl		; now DE = screen address
+  jp ClearPlane_4	; continue the loop
+ClearPlane_3:
+; the column is dirty, need to clean; HL = dirty flag addr, DE = screen addr
+  xor a
+  ld (hl),a		; clear the dirty flag
+  ld l,a
+  ld h,a		; HL = 0
+REPT 128
+  push hl
 ENDM
+  dec d			; update the screen addr in DE
+ClearPlane_4:
   dec b
-  jp nz,ClearPlane_1
+  jp nz,ClearPlane_1	; continue the loop by columns
 ClearPlane_fin:
-  ld sp,$0000		; mutable parameter
+  ld sp,$0000		; restore SP; mutable parameter!
   ret
 
 ;Inputs:
@@ -1734,9 +1766,7 @@ SwitchToPlane:
 ;   HL = address on the screen
 ;   DE = sprite address
 DrawSprite16x8:
-  ld a,h		; get column byte
-  and $E0		; 3 top bits
-  ld (DrawSprite16x8_3+1),a	; set the mutable parameter
+  call MarkColumnDirty
   ld c,2		; 2 columns
 DrawSprite16x8_1:
 REPT 8
@@ -1753,12 +1783,7 @@ ENDM
   add a,8
   ld l,a		; restore row L
 ; next column
-  ld a,h
-  inc a
-  and $1F		; keep 0..31 column value
-DrawSprite16x8_3:
-  or $A0		; this parameter is mutable
-  ld h,a
+  call NextColumn
 ; continue the loop by columns
   jp DrawSprite16x8_1
 
@@ -1766,9 +1791,7 @@ DrawSprite16x8_3:
 ;   HL = address on the screen
 ;   DE = sprite address
 DrawSprite24x16:
-  ld a,h		; get column byte
-  and $E0		; 3 top bits
-  ld (DrawSprite24x16_3+1),a	; set the mutable parameter
+  call MarkColumnDirty
   ld c,3		; 3 columns
 DrawSprite24x16_1:
 REPT 16
@@ -1785,22 +1808,14 @@ ENDM
   add a,16
   ld l,a		; restore row L
 ; next column
-  ld a,h
-  inc a
-  and $1F		; keep 0..31 column value
-DrawSprite24x16_3:
-  or $A0		; this parameter is mutable
-  ld h,a
-; continue the loop by columns
+  call NextColumn
   jp DrawSprite24x16_1
 
 ; Draw ship sprite 24x16 by XOR reflected vertically
 ;   HL = address on the screen
 ;   DE = sprite address
 DrawSprite24x16R:
-  ld a,h		; get column byte
-  and $E0		; 3 top bits
-  ld (DrawSprite24x16R_3+1),a	; set the mutable parameter
+  call MarkColumnDirty
   ld a,l
   sub 15		; 15 lines lower
   ld l,a
@@ -1820,22 +1835,28 @@ ENDM
   sub 16
   ld l,a		; restore row L
 ; next column
-  ld a,h
-  inc a
-  and $1F		; keep 0..31 column value
-DrawSprite24x16R_3:
-  or $A0		; this parameter is mutable
-  ld h,a
+  call NextColumn
 ; continue the loop by columns
   jp DrawSprite24x16R_1
 
+; Go to the next screen column, to draw next column of the sprite
+;   HL = address on the screen
 NextColumn:
   ld a,h
   inc a
   and $1F		; keep 0..31 column value
 NextColumn_P:
-  or $E0		; this parameter is be mutable
+  or $E0		; screen plane hi byte, parameter is mutable!
   ld h,a
+;  ret
+; Set dirty flag for the column
+;   HL = address on the screen $A000..$FFFF
+MarkColumnDirty:
+  push hl
+  ld l,h
+  ld h,$7F
+  inc (hl)
+  pop hl
   ret
 
 ;----------------------------------------------------------------------------
@@ -1850,7 +1871,13 @@ AstroSpriteMid:
 INCLUDE "astrosprt.asm"
 AstroSpriteEnd:
 
-AstroXSpaceTil8000 EQU $8000 - AstroSpriteEnd
+AstroXSpaceTil7FA0 EQU $7FA0 - AstroSpriteEnd
+
+; Dirty flags for game screen planes, see MarkColumnDirty
+  ORG $7FA0
+DirtyColumnFlagsA0: ds 32
+DirtyColumnFlagsC0: ds 32
+DirtyColumnFlagsE0: ds 32
 
   ORG $A000
 INCLUDE "astrotscr.asm"
