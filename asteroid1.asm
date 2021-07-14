@@ -429,7 +429,7 @@ GameOverTimer:		db	0	; Timer for timeout after the Game Over sign
 
 ; Object record format:
 ; + 0:      Status byte: 0 = Not active
-; + 1:      Type / Subtype
+; + 1:      Type 0..7 / Subtype
 ; + 2-3:    X position
 ; + 4-5:    Y position
 ; + 6:      X speed
@@ -465,10 +465,10 @@ ShipShotObjects:	db	0, 5, 0,0,0,0, 0,0
 ScrShotObjects:		db	0, 5, 0,0,0,0, 0,0
 			db	0, 5, 0,0,0,0, 0,0
 ; Ship debris objects, 4 records
-ShipDebrisObjects:	db	0, $87, 0,0,0,0, 0,-2
-			db	0, $07, 0,0,0,0, -2,1
-			db	0, $07, 0,0,0,0, 2,-1
-			db	0, $87, 0,0,0,0, 2,2
+ShipDebrisObjects:	db	0, $87, 0,0,0,0, -1,-3	; goes SW
+			db	0, $07, 0,0,0,0, -2,1	; goes NW
+			db	0, $07, 0,0,0,0, 1,-1	; goes SE
+			db	0, $87, 0,0,0,0, 2,2	; goes NE
 ; End of the Objects array
 ;
 ; X,Y shifts from object's sprite left-top corner to the object center
@@ -726,22 +726,27 @@ DoAsteroidPoints:
   inc hl
   ld a,(hl)	; get Type
   and 7
-; update player's score
+  call AddPlayerPoints
+  pop hl
+  ret
+
+; Update player's score
+;   A = how much to add, in 10th of points
+AddPlayerPoints:
   ld hl,PlayerScore
   add a,(hl)
   daa
   ld (hl),a
-  jp nc,DoAsteroidPoints_1
+  jp nc,AddPlayerPoints_1
   inc hl
   ld a,(hl)
-  inc a
+  add a,1
   daa
   ld (hl),a
 ; set the flag to redraw the score
   ld a,1
   ld (IndicatorsFlag),a
-DoAsteroidPoints_1:
-  pop hl
+AddPlayerPoints_1:
   ret
 
 ; Check if we have a collision
@@ -1311,7 +1316,7 @@ SaucerReset:
   ld (SaucerYSpeed),a
   ret
 
-; Initialize Asteroid Wave Variables
+; Initialize Asteroids for the new wave
 InitWaveVars:
   ld a,(WaveNumber)
   or a			; wave 0 = demo
@@ -1330,30 +1335,44 @@ InitWaveVars_1:
   ld a,1		; 1 = active
   ld (de),a		; set asteroid state to Active
   inc de		; now DE = object record + 1
-; set type and X position
+; set type
   call Random16		; get HL = random number
   ex de,hl		; now HL = object record + 1, DE = random number
   ld a,d
   and $C0		; bits 6-7 for random rock subtype
   or 4			; type 4 - L-size rock
   ld (hl),a		; set asteroid type
-  inc hl		; now DE = object record + 2, at X lo
+  inc hl		; now HL = object record + 2, at X lo
+; set X position
+  ld a,d
+  or a
+  jp m,InitWaveVars_2	; < 0 => jump
+; DE >= 0, X = (random and $03FF) => X = 0..1023
+  or $03
+  ld d,a
+  jp InitWaveVars_3
+InitWaveVars_2:		; DE < 0
+; DE < 0, X = $0AAA + (random or $FC00) => X = 2730..1707
+  or $FC
+  ld d,a
+  push hl
+  ld hl,$0AAA
+  add hl,de
+  ex de,hl
+  pop hl
+InitWaveVars_3:
   ld (hl),e		; set asteroid X lo
   inc hl
-  ld a,d
-  and 7 ;TODO: make it better:
-  ;TODO: if upper bit = 0, X = random and $03FF         => X = 0..1023
-  ;TODO: if upper bit = 1, X = $0AAA - random and $03FF => X = 2730..1707
-  ld (hl),a		; set asteroid X hi
+  ld (hl),d		; set asteroid X hi
   inc hl
-  ex de,hl
+  ex de,hl		; now DE = object record + 4
 ; set Y position
   call Random16		; get HL = random number
   ex de,hl		; now HL = object record + 4, DE = random number
   ld (hl),e		; set asteroid Y lo
   inc hl
   ld a,d
-  and 7
+  and 7			; $0000..$07FF
   ld (hl),a		; set asteroid Y hi
   inc hl		; now HL = object record + 6, at X speed
 ; set X,Y velocity
