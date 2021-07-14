@@ -2,10 +2,11 @@
 ; Import declarations from asteroid0.asm
 INCLUDE "asteroid0.inc"
 
-ShipsPerGame	EQU	3
-BulletTimerVal	EQU	28	; Bullet lifespan, gameloop cycles
-WaveTimerVal	EQU	60	; Time before new wave, gameloop cycles
-ShipHitTimerVal	EQU	40	; Time for ship explosion, gameloop cycles
+ShipsPerGame		EQU	3
+BulletTimerVal		EQU	28	; Bullet lifespan, gameloop cycles
+WaveTimerVal		EQU	60	; Time before new wave, gameloop cycles
+ShipHitTimerVal		EQU	40	; Time for ship explosion, gameloop cycles
+GameOverTimerVal	EQU	120	; Time after Game Over sign to return to demo mode
 
 ;----------------------------------------------------------------------------
 
@@ -18,6 +19,7 @@ Start:
 ; Waiting on the title screen
   call WaitAnyKey
 
+RestartDemo:
   call ClearPlane0123	; Clear the whole screen
   ld a,(CurrentPlaneHi)
   call SetPaletteGame
@@ -137,10 +139,9 @@ Start:
 ;   jp Test_H1
 
 InitGame:
-  call ResetAllObjects
-  call InitGameVars	; Initialize various game variables
+  call InitGameVars		; Init vars and reset all objects
 
-  call DrawTitles	; Draw the titles for demo mode
+  call DrawTitles		; Draw the titles for demo mode
   ld hl,SAPressToStart
   call DrawAString
 
@@ -203,16 +204,29 @@ GameRunningLoop_2:
 GameRunningLoop_GameOver:
   xor a
   ld (NumPlayers),a		; switch to demo mode
+  ld a,GameOverTimerVal
+  ld (GameOverTimer),a		; set the timer to return back to demo mode
   jp GameRunningLoop_4
-GameRunningLoop_3:
+GameRunningLoop_3:		; ShipHitTimer = 0
   ld a,(NumPlayers)
   or a				; if in game mode
-  call nz,UpdateShipFire	; Update ship firing
+  jp nz,GameRunningLoop_G
+; in demo mode
+  ld a,(GameOverTimer)
+  or a
+  jp z,GameRunningLoop_4
+  dec a
+  ld (GameOverTimer),a
+  jp nz,GameRunningLoop_4
+; game over timer just ended => restart the demo mode
+  jp RestartDemo
+GameRunningLoop_G:		; in the game mode
+  call UpdateShipFire		; Update ship firing
 GameRunningLoop_4:
 
   call UpdateObjects		; Update position for all objects
 
-  call DrawObjects
+  call DrawObjects		; draw all the objects
 
   ld a,(NumPlayers)
   or a
@@ -251,7 +265,14 @@ GameRunningLoop_B:		; in demo mode
 GameRunningLoop_C:
 
 ; Save interrupt counter value
+  ld a,(IntCount)		; get interrupt counter
+  cp 2
+  jp nc,GameRunningLoop_I
+; wait one more interrupt, to make every game loop at least 2 frames
+  ei
+  halt
   ld a,(IntCount)
+GameRunningLoop_I:
   ld (LastIntCount),a
   xor a
   ld (IntCount),a
@@ -259,9 +280,9 @@ GameRunningLoop_C:
   ld a,(CurrentPlaneHi)
   sub $20			; CurrentPlaneHi cycles $E0 -> $C0 -> $A0
   cp $80
-  jp nz,Start_A
+  jp nz,GameRunningLoop_Z
   ld a,$E0
-Start_A:
+GameRunningLoop_Z:
   ld (CurrentPlaneHi),a
 ; Set palette to show already drawn plane
 ;  ld a,(CurrentPlaneHi)
@@ -271,8 +292,7 @@ Start_A:
 ; Called from the game loop to start a new game
 PrepareNewGame:
   call ClearPlane0123		; clear the whole screen
-  call ResetAllObjects
-  call InitGameVars
+  call InitGameVars		; Init vars and reset all objects
   ld a,WaveTimerVal
   ld (WaveTimer),a		; Wave tmer will count down to 0 then new wave will be started
   ld a,1
@@ -405,6 +425,7 @@ ShipBulletSR:		db	0	; Counter to limit ship fire rate
 ScrTimer:		db	0	; Countdown timer for saucer spawn
 ScrTmrReload:		db	0	; Reload value for saucer timer
 ShipHitTimer:		db	0	; Timer used on ship hit
+GameOverTimer:		db	0	; Timer for timeout after the Game Over sign
 
 ; Object record format:
 ; + 0:      Status byte: 0 = Not active
@@ -474,7 +495,7 @@ ObjectsHitRadius:
 
 ;----------------------------------------------------------------------------
 
-; Initialize Game Variables
+; Initialize game variables AND reset all objects
 InitGameVars:
   xor a
   ld (WaveNumber),a
@@ -485,8 +506,7 @@ InitGameVars:
   ld a,ShipsPerGame
   ld (PlayerShips),a
   ld (IndicatorsFlag),a		; need to redraw the indicators
-  ret
-
+;
 ; Deactivate all objects
 ResetAllObjects:
   ld hl,Objects
