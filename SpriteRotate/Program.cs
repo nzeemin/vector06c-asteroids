@@ -340,6 +340,28 @@ namespace SpriteRotate
             return octets;
         }
 
+        static byte[] PrepareSpriteArrayEvenRows(Bitmap bmp, int x, int y, int cols, int rows)
+        {
+            var octets = new byte[cols * rows];
+            for (int col = 0; col < cols; col++)
+            {
+                for (int row = 0; row < rows; row++)
+                {
+                    int val = 0;
+                    for (int b = 0; b < 8; b++)
+                    {
+                        Color c = bmp.GetPixel(x + col * 8 + b, y + row * 2);
+                        int v = (c.GetBrightness() > 0.5f) ? 0 : 1;
+                        val |= (v << (7 - b));
+                    }
+
+                    octets[col * rows + row] = (byte)val;
+                }
+            }
+
+            return octets;
+        }
+
         static void WriteByteArray(byte[] octets, StreamWriter writer)
         {
             int cnt = 0;
@@ -408,6 +430,21 @@ namespace SpriteRotate
             }
         }
 
+        static void PrepareSpriteEvenRowsWithAllShifts(Bitmap bmp, int x, int y, int cols, int rows, string name, StreamWriter writer)
+        {
+            var octets = PrepareSpriteArrayEvenRows(bmp, x, y, cols, rows);
+
+            writer.WriteLine($"{name}S0:");
+            WriteByteArray(octets, writer);
+
+            for (int j = 1; j < 8; j++)
+            {
+                ShiftByteArray(octets, cols, rows);
+                writer.WriteLine($"{name}S{j}:");
+                WriteByteArray(octets, writer);
+            }
+        }
+
         static void PrepareSpritesText()
         {
             var bmp = new Bitmap(@"..\astrosprs.png");
@@ -430,7 +467,7 @@ namespace SpriteRotate
                 PrepareSpriteWithAllShifts(bmp, 8, 64, 3, 16, "Ufo", writer);
 
                 // Shrapnel
-                PrepareSpriteWithAllShifts(bmp, 72, 64, 3, 16, "Shrapnel", writer);
+                PrepareSpriteEvenRowsWithAllShifts(bmp, 72, 64, 3, 8, "Shrapnel", writer);
 
                 // Debris
                 PrepareSpriteWithAllShifts(bmp, 144, 64, 2, 8, "Debris1", writer);

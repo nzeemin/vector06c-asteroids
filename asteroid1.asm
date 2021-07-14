@@ -998,9 +998,9 @@ DrawRockLAddrs:
 
 DrawShrapnelProc:
   ld hl,ShrapnelS0	; base sprite address - smaller sprite
-  call Multiply48Base	; calculate sprite address based on shift A = 0..7
+  call Multiply24Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
-  call DrawSprite24x16
+  call DrawSprite24x16EvenRows
   ret
 
 DrawBulletProc:
@@ -1045,6 +1045,23 @@ Multiply16Base:
   add hl,bc
   ret
 
+; Multiply A by 24; A = 0..7, HL = base address
+; Result: HL = base address + A * 24
+Multiply24Base:
+  push hl		; store base address
+  and 7
+  add a,a
+  ld c,a
+  ld b,0
+  ld hl,TableMul24
+  add hl,bc		; now HL = address in the table
+  ld c,(hl)		; get lo
+  inc hl
+  ld b,(hl)		; get hi; now HL = A * 48
+  pop hl		; restore base address
+  add hl,bc
+  ret
+
 ; Multiply A by 48; A = 0..7, HL = base address
 ; Result: HL = base address + A * 48
 Multiply48Base:
@@ -1062,6 +1079,8 @@ Multiply48Base:
   add hl,bc
   ret
 
+TableMul24:
+	dw	0, 24, 24*2, 24*3, 24*4, 24*5, 24*6, 24*7
 TableMul48:
 	dw	0, 48, 48*2, 48*3, 48*4, 48*5, 48*6, 48*7
 TableMul384:
@@ -1814,6 +1833,31 @@ ENDM
   call NextColumn
 ; continue the loop by columns
   jp DrawSprite16x8_1
+
+; Draw sprite 24x16 by XOR, only even rows, so the stored sprite is 24x8
+;   HL = address on the screen
+;   DE = sprite address
+DrawSprite24x16EvenRows:
+  call MarkColumnDirty
+  ld c,3		; 3 columns
+DrawSprite24x16EvenRows_1:
+REPT 8
+  ld a,(de)
+  xor (hl)
+  ld (hl),a
+  inc de
+  dec l
+  dec l
+ENDM
+  dec c
+  ret z			; was last column => return
+; back to the top row
+  ld a,l
+  add a,16
+  ld l,a		; restore row L
+; next column
+  call NextColumn
+  jp DrawSprite24x16EvenRows_1
 
 ; Draw sprite 24x16 by XOR
 ;   HL = address on the screen
