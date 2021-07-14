@@ -2,6 +2,7 @@
 ; Import declarations from asteroid0.asm
 INCLUDE "asteroid0.inc"
 
+ShipsPerGame	EQU	3
 BulletTimerVal	EQU	28	; Bullet lifespan, gameloop cycles
 WaveTimerVal	EQU	60	; Time before new wave, gameloop cycles
 ShipHitTimerVal	EQU	40	; Time for ship explosion, gameloop cycles
@@ -144,6 +145,8 @@ InitGame:
   call DrawAString
 
   call InitWaveVars		; Create wave for the demo mode
+  xor a
+  ld (NumPlayers),a		; select demo mode
 
   call WaitKeyUp
 
@@ -215,9 +218,9 @@ GameRunningLoop_4:
   or a
   jp z,GameRunningLoop_B	; jump if not in game mode
 ; In game mode, update indicators
-;TODO: Update score/lives indicators only if needed
-  call DrawShipLives
-  call DrawPlayerScore
+  ld a,IndicatorsFlag
+  or a
+  call nz,DrawIndicators	; show updated score/lives indicators
 ; In game mode, check if the wave ended
   ld a,(CurAsteroids)
   or a				; do we have any rocks on the screen?
@@ -291,6 +294,7 @@ DoShipExplosion:
 DoShipExplosion_0:
   ld a,ShipHitTimerVal	; time to show the explosion
   ld (ShipHitTimer),a	; set the timer
+  ld (IndicatorsFlag),a	; set flag to show the updated PlayerShips
   xor a
   ld (ShipStatus),a	; set Status not active
 ; prepare debris objects
@@ -386,20 +390,20 @@ ProcessKeyboard_2:
 FireSw		EQU $0100	; Fire button status
 ThrustSw	EQU $0101	; Thrust button status
 HyprSpcSw	EQU $0102	; Hyper button status
+NumPlayers	EQU $0103	; 0 = Not playing, 1 = In the Game
+PlayerScore	EQU $0104	; Player score as two BCD bytes
+PlayerShips	EQU $0106	; Current number of player ships
+IndicatorsFlag	EQU $0107	; Flag indicating we have to redraw indicators - Score/Ships
+ShipXAccel	EQU $0108
+ShipYAccel	EQU $0109
+WaveNumber	EQU $010A
+CurAsteroids	EQU $010B	; Current number of asteroids
+WaveTimer	EQU $010C	; Timer used before new wave
 
-NumPlayers:		db	0	; 0 = Not playing, 1 = In the Game
-PlayerScore:		db	0,0	; Player score as two BCD bytes
-ShipsPerGame:		db	3
-PlayerShips:		db	3	; Current number of player ships
 ShipDir:		db	8	; Ship direction 0..31; 0 = W, 8 = N, 16 = E, 24 = S
 ShipBulletSR:		db	0	; Counter to limit ship fire rate
-ShipXAccel:		db	0
-ShipYAccel:		db	0
 ScrTimer:		db	0	; Countdown timer for saucer spawn
 ScrTmrReload:		db	0	; Reload value for saucer timer
-WaveNumber:		db	0
-CurAsteroids:		db	0	; Current number of asteroids
-WaveTimer:		db	0	; Timer used before new wave
 ShipHitTimer:		db	0	; Timer used on ship hit
 
 ; Object record format:
@@ -478,8 +482,9 @@ InitGameVars:
   ld (PlayerScore),a
   ld (PlayerScore+1),a
   ld (CurAsteroids),a
-  ld a,3
+  ld a,ShipsPerGame
   ld (PlayerShips),a
+  ld (IndicatorsFlag),a		; need to redraw the indicators
   ret
 
 ; Deactivate all objects
@@ -701,6 +706,7 @@ DoAsteroidPoints:
   inc hl
   ld a,(hl)	; get Type
   and 7
+; update player's score
   ld hl,PlayerScore
   add a,(hl)
   daa
@@ -711,6 +717,9 @@ DoAsteroidPoints:
   inc a
   daa
   ld (hl),a
+; set the flag to redraw the score
+  ld a,1
+  ld (IndicatorsFlag),a
 DoAsteroidPoints_1:
   pop hl
   ret
@@ -1456,36 +1465,35 @@ GetFreeAstSlot_1:
   or a			; set Z=0
   ret
 
-DrawPlayerScore:
-  ld hl,$80FF		; screen address
-  ld (TextAddr),hl
-  ld hl,PlayerScore
-  call DrawNumberString
-  ret
-
-DrawShipLives:
+DrawIndicators:
+; draw ship lives
   ld hl,$81F0		; screen address
   ld (TextAddr),hl
   ld c,5		; max ships
   ld a,(PlayerShips)
   or a			; no ships left?
-  jp z,DrawShipLives_2
+  jp z,DrawIndicators_2
   ld b,a		; now B = ships to draw
   ld a,c
   sub b
   ld c,a		; now C = spaces to draw
-DrawShipLives_1:
+DrawIndicators_1:
   ld a,$2F		; ship symbol
   call DrawChar
   dec b
-  jp nz,DrawShipLives_1
-DrawShipLives_2:
+  jp nz,DrawIndicators_1
+DrawIndicators_2:
   ld a,$20		; space char
   call DrawChar
   dec c
-  jp nz,DrawShipLives_2
-  ret
-
+  jp nz,DrawIndicators_2
+; draw player's score
+  ld hl,$80FF		; screen address
+  ld (TextAddr),hl
+  ld hl,PlayerScore
+;  call DrawNumberString
+;  ret
+;
 ; Draw BCD number as string "BBAA0", maximum is "99990"
 ;   HL = BCD number address, two bytes: AA BB
 DrawNumberString:
@@ -1875,9 +1883,9 @@ AstroXSpaceTil7FA0 EQU $7FA0 - AstroSpriteEnd
 
 ; Dirty flags for game screen planes, see MarkColumnDirty
   ORG $7FA0
-DirtyColumnFlagsA0: ds 32
-DirtyColumnFlagsC0: ds 32
-DirtyColumnFlagsE0: ds 32
+DirtyColumnFlagsA0: ds 32,1
+DirtyColumnFlagsC0: ds 32,1
+DirtyColumnFlagsE0: ds 32,1
 
   ORG $A000
 INCLUDE "astrotscr.asm"
