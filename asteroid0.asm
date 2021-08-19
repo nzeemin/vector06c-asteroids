@@ -1,9 +1,9 @@
 
 ;----------------------------------------------------------------------------
 
-Start	.equ	240h
+Start	.equ	2E0h
 
-	.EXPORT KeyLineEx, KeyLine0, Joystick
+	.EXPORT KeyLineEx, KeyLine0, JoystickP
 	.EXPORT IntCount, SetPaletteGame
 
 ;----------------------------------------------------------------------------
@@ -23,25 +23,30 @@ Start	.equ	240h
 	lxi	h,KEYINT
 	shld	38h+1
 
-;TODO: Decompress the screen
+; Move encoded block from Start to 8000h, LZSASIZES+LZSASIZE1 bytes
+	lxi	d,Start			; source addr
+	lxi	b,08000h		; destination addr
+	lxi	h,LZSASIZES+LZSASIZE1	; size
+	inr	h
+Init_1:
+	ldax	d
+	inx	d
+	stax	b
+	inx	b
+	dcr	l
+	jnz	Init_1
+	dcr	h
+	jnz	Init_1
 
-; ; Move encoded block from Start to A000h
-; 	xra	a
-; 	lxi	d,Start		; source addr
-; 	lxi	b,0A000h	; destination addr
-; Init_1:
-; 	ldax	d
-; 	inx	d
-; 	stax	b
-; 	inr	c
-; 	jnz	Init_1
-; 	inr	b
-; 	jnz	Init_1
+; Decompress the code and sprites from 08000h+LZSASIZES to Start
+	lxi	h,08000h+LZSASIZES	; source addr
+	lxi	d,Start			; destination addr
+	call	unlzsa2
 
-; ; Decompress the encoded block from A000h to Start
-; 	lxi	h,0A000h
-; 	lxi	d,Start
-; 	call	unlzsa1
+; Decompress 24K of the title screen from 8000h to A000h
+	lxi	h,08000h		; source addr
+	lxi	d,0A000h		; destination addr
+	call	unlzsa2
 
 ; Set palette for the title screen
 	lxi	h, PaletteTitle+15
@@ -52,7 +57,7 @@ Restart:
 	mvi	a, 88h
 	out	4		; initialize R-Sound 2
 ; Joystick init
-	mvi	a, 60h		; set bits to check Joystick-P, both P1 and P2
+	mvi	a, 60h		; bits to check Joystick-P, both P1 and P2
 	out	5		; set Joystick-P query bits
 	in	6		; read Joystick-P initial value
 	sta	KEYINT_J+1	; store as xra instruction parameter
@@ -108,9 +113,9 @@ KEYINT:
 ; Joystick scan
 	in	6		; read Joystick-P
 KEYINT_J:
-	xri	0		; mutable param! - XOR with initial value
+	xri	0		; XOR with initial value - mutable param!
 	cma
-	sta	Joystick	; save to analyze later
+	sta	JoystickP	; save to analyze later
 
 ; Scrolling, screen mode, border
 	mvi	a, 88h
@@ -132,7 +137,7 @@ KEYINT_J:
 
 KeyLineEx:	.db 11111111b
 KeyLine0:	.db 11111111b
-Joystick:	.db 11111111b
+JoystickP:	.db 11111111b
 
 IntCount:	.db 0		; interrupt counter
 
@@ -180,72 +185,7 @@ PaletteTitle:
 
 ;----------------------------------------------------------------------------
 
-; LZSA1 decompressor code by Ivan Gorodetsky
-; https://gitlab.com/ivagor/lzsa8080/-/blob/master/LZSA1/unlzsa1_small.asm
-; input: 	hl=compressed data start
-;		de=uncompressed destination start
-
-.DEFINE NEXT_HL inx h
-.DEFINE ADD_OFFSET xchg\ dad d
-.DEFINE NEXT_DE inx d
-
-unlzsa1:
-	mvi b,0
-ReadToken:
-	mov a,m
-	push psw
-	NEXT_HL
-	ani 70h
-	jz NoLiterals 
-	rrc\ rrc\ rrc\ rrc
-	cpi 7
-	cz ReadLongBA
-	mov c,a
-	call BLOCKCOPY
-NoLiterals:
-	pop psw
-	push d
-	mov e,m
-	NEXT_HL
-	mvi d,0FFh
-	ora a
-	jp ShortOffset
-LongOffset:
-	mov d,m
-	NEXT_HL
-ShortOffset:
-	ani 0Fh
-	adi 3
-	cpi 15+3
-	cz ReadLongBA
-	mov c,a
-	xthl
-	ADD_OFFSET
-	call BLOCKCOPY
-	pop h
-	jmp ReadToken
-ReadLongBA:
-	add m
-	NEXT_HL
-	rnc
-	mov b,a\ mov a,m\ NEXT_HL\ rnz
-	mov c,a\ mov b,m\ NEXT_HL
-	ora b
-	mov a,c
-	rnz
-	pop d
-	pop d
-	ret
-BLOCKCOPY:
-	mov a,m
-	stax d
-	NEXT_HL
-	NEXT_DE
-	dcx b
-	mov a,b
-	ora c
-	jnz $-7
-	ret
+#INCLUDE "unlzsa2.asm"
 
 ;----------------------------------------------------------------------------
 

@@ -10,11 +10,11 @@ GameOverTimerVal	EQU	120	; Time after Game Over sign to return to demo mode
 
 ;----------------------------------------------------------------------------
 
-  ORG $0240
+  ORG $02E0
 Start:
-;  ld sp,$0100
-
-; Drawing two text strings under the title screen
+; Clear the plane 3 ($8000-$BFFF) from any dirt
+  call ClearPlane3
+; Draw two text strings under the title screen
   call DrawTitles
 ; Waiting on the title screen
   call WaitAnyKey
@@ -1612,22 +1612,22 @@ ReadKeyboard:
   xor a
   ld (ReadKeyboard_3+1),a
   ld hl,ReadKeyboard_map  ; Point HL at the keyboard list
-  ld b,2                  ; number of rows to check
+  ld b,3		; number of rows to check
 ReadKeyboard_0:        
-  ld e,(hl)               ; get address low
+  ld e,(hl)		; get address low
   inc hl
-  ld d,(hl)               ; get address high
+  ld d,(hl)		; get address high
   inc hl
-  ld a,(de)               ; get bits for keys
-  ld c,8                  ; number of keys in a row
+  ld a,(de)		; get bits for keys
+  ld c,8		; number of keys in a row
 ReadKeyboard_1:
   rla			; shift A left; bit 0 sets carry bit
   jp c,ReadKeyboard_2	; if the bit is 1, the key's not pressed
-  push af
+  ld e,a		; save A
   ld a,(ReadKeyboard_3+1)
   or (hl)               ; set bit for the key pressed
   ld (ReadKeyboard_3+1),a
-  pop af
+  ld a,e		; restore A
 ReadKeyboard_2:
   inc hl		; next table address
   dec c
@@ -1646,7 +1646,7 @@ ReadKeyboard_map:                     ; 7   6   5   4   3   2   1   0
   DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US  --  --  --  --  --
   DW KeyLine0
   DB $00,$04,$08,$02,$01,$20,$20,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
-  DW Joystick
+  DW JoystickP
   DB $01,$01,$00,$00,$00,$08,$02,$04  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
 
 ;----------------------------------------------------------------------------
@@ -1715,12 +1715,12 @@ DrawChar_next:
 
 ClearPlane3:
   xor a
-  ld hl,$8000
+  ld de,$8000
   ld b,0
 ClearPlane3_1:
 REPT 32
-  ld (hl),a
-  inc hl
+  ld (de),a
+  inc de
 ENDM
   dec b
   jp nz,ClearPlane3_1
@@ -1728,6 +1728,16 @@ ENDM
 
 ; Clear the whole screen
 ClearPlane0123:
+; First set all the dirty flags
+  ld de,DirtyColumnFlagsA0
+  ld a,1
+  ld b,32*3
+ClearPlane0123_1:
+  ld (de),a
+  inc de
+  dec b
+  jp nz,ClearPlane0123_1
+; Now clear all the planes
   ld hl,$0000
   call ClearPlane
   ld hl,$E000
@@ -1967,13 +1977,9 @@ AstroSpriteEnd:
 AstroXSpaceTil7FA0 EQU $7FA0 - AstroSpriteEnd
 
 ; Dirty flags for game screen planes, see MarkColumnDirty
-  ORG $7FA0
-DirtyColumnFlagsA0: ds 32,1
-DirtyColumnFlagsC0: ds 32,1
-DirtyColumnFlagsE0: ds 32,1
-
-  ORG $A000
-INCLUDE "astrotscr.asm"
+DirtyColumnFlagsA0 EQU $7FA0
+DirtyColumnFlagsC0 EQU $7FC0
+DirtyColumnFlagsE0 EQU $7FE0
 
 ;----------------------------------------------------------------------------
 END
