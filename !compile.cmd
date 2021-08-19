@@ -29,7 +29,7 @@ findstr /B "Astro" asteroid1.txt
 
 dir /-c asteroid1.bin|findstr /R /C:"asteroid1.bin"
 
-tools\lzsa.exe -f1 -r -c asteroid1.bin asteroid1.lzsa
+tools\lzsa.exe -f2 -r -c asteroid1.bin asteroid1.lzsa
 
 dir /-c asteroid1.lzsa|findstr /R /C:"asteroid1.lzsa"
 

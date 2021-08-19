@@ -1034,7 +1034,7 @@ DrawDebrisProc_1:
   call Multiply16Base	; calculate sprite address based on shift A = 0..7
   ex de,hl		; now HL = screen address, DE = sprite address
   call DrawSprite16x8
-;TODO: use Debris1/Debris2, use reflections
+;TODO: use reflections
   ret
 
 ; Multiply A by 16; A = 0..7, HL = base address
@@ -1641,11 +1641,13 @@ ReadKeyboard_3:
 
 ; Mapping: Arrows Left/Right - rotate the ship, Up - thrust,
 ;          US/SS/RusLat/ZB - fire, Tab - hyper
-ReadKeyboard_map:
+ReadKeyboard_map:                     ; 7   6   5   4   3   2   1   0
   DW KeyLineEx
-  DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US
+  DB $01,$01,$01,$00,$00,$00,$00,$00  ; R/L SS  US  --  --  --  --  --
   DW KeyLine0
   DB $00,$04,$08,$02,$01,$20,$20,$10  ; Dn  Rt  Up  Lt  ZB  VK  PS  Tab
+  DW Joystick
+  DB $01,$01,$00,$00,$00,$08,$02,$04  ; Fr  Fr  --  --  Dn  Up  Lt  Rt
 
 ;----------------------------------------------------------------------------
 

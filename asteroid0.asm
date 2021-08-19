@@ -3,7 +3,7 @@
 
 Start	.equ	240h
 
-	.EXPORT KeyLineEx, KeyLine0
+	.EXPORT KeyLineEx, KeyLine0, Joystick
 	.EXPORT IntCount, SetPaletteGame
 
 ;----------------------------------------------------------------------------
@@ -51,6 +51,11 @@ Restart:
 	lxi	sp,100h
 	mvi	a, 88h
 	out	4		; initialize R-Sound 2
+; Joystick init
+	mvi	a, 60h		; set bits to check Joystick-P, both P1 and P2
+	out	5		; set Joystick-P query bits
+	in	6		; read Joystick-P initial value
+	sta	KEYINT_J+1	; store as xra instruction parameter
 
 	ei
 	jp Start
@@ -100,6 +105,13 @@ KEYINT:
 	out	3
 	in	2
 	sta	KeyLine0
+; Joystick scan
+	in	6		; read Joystick-P
+KEYINT_J:
+	xri	0		; mutable param! - XOR with initial value
+	cma
+	sta	Joystick	; save to analyze later
+
 ; Scrolling, screen mode, border
 	mvi	a, 88h
 	out	0
@@ -120,6 +132,7 @@ KEYINT:
 
 KeyLineEx:	.db 11111111b
 KeyLine0:	.db 11111111b
+Joystick:	.db 11111111b
 
 IntCount:	.db 0		; interrupt counter
 
