@@ -143,6 +143,8 @@ namespace SpriteRotate
         static void PrepareSineTable()
         {
             const string outfilename = "astrosine.asm";
+            const double SineMax = 52.0;
+
             using (var writer = new StreamWriter(outfilename))
             {
                 writer.WriteLine("SineTbl:");
@@ -150,7 +152,7 @@ namespace SpriteRotate
                 {
                     if (dir % 16 == 0)
                         writer.Write("  db\t");
-                    var v = Math.Round(Math.Sin(Math.PI / 16.0 * dir) * 64.0, MidpointRounding.AwayFromZero);
+                    var v = Math.Round(Math.Sin(Math.PI / 16.0 * dir) * SineMax, MidpointRounding.AwayFromZero);
                     if (dir % 16 > 0)
                         writer.Write(",");
                     writer.Write(v);

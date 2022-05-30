@@ -1,8 +1,7 @@
 
 ;----------------------------------------------------------------------------
 
-Start	.equ	2E0h
-
+	.EXPORT Start
 	.EXPORT KeyLineEx, KeyLine0, JoystickP
 	.EXPORT IntCount, SetPaletteGame
 
@@ -12,7 +11,7 @@ Start	.equ	2E0h
 
 	di
 	xra	a
-	out	10h
+	out	10h			; turn off the quasi-disk
 	lxi	sp,0100h
 	lxi	h,0C3F3h
 	shld	0
@@ -20,7 +19,7 @@ Start	.equ	2E0h
 	lxi	h,Restart
 	shld	2
 	sta	38h
-	lxi	h,KEYINT
+	lxi	h,KEYINT		; interrupt handler address
 	shld	38h+1
 
 ; Move encoded block from Start to 8000h, LZSASIZES+LZSASIZE1 bytes
@@ -37,30 +36,30 @@ Init_1:
 	jnz	Init_1
 	dcr	h
 	jnz	Init_1
-
 ; Decompress the code and sprites from 08000h+LZSASIZES to Start
 	lxi	h,08000h+LZSASIZES	; source addr
 	lxi	d,Start			; destination addr
 	call	unlzsa2
-
 ; Decompress 24K of the title screen from 8000h to A000h
 	lxi	h,08000h		; source addr
 	lxi	d,0A000h		; destination addr
 	call	unlzsa2
-
-; Set palette for the title screen
-	lxi	h, PaletteTitle+15
-	call	SetPalette
 
 Restart:
 	lxi	sp,100h
 	mvi	a, 88h
 	out	4		; initialize R-Sound 2
 ; Joystick init
+	mvi	a, 92h		; control byte
+	out	4		; initialize the I/O controller
 	mvi	a, 60h		; bits to check Joystick-P, both P1 and P2
 	out	5		; set Joystick-P query bits
 	in	6		; read Joystick-P initial value
 	sta	KEYINT_J+1	; store as xra instruction parameter
+
+; Set palette for the title screen
+	lxi	h, PaletteTitle+15
+	call	SetPalette
 
 	ei
 	jp Start
@@ -189,10 +188,7 @@ PaletteTitle:
 
 ;----------------------------------------------------------------------------
 
-; Filler
-	.org	Start-1
-	.db 0
-
+Start:
 	.end
 
 ;----------------------------------------------------------------------------

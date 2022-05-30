@@ -11,9 +11,18 @@ rem Define ESCchar to use in ANSI escape sequences
 rem https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line
 for /F "delims=#" %%E in ('"prompt #$E# & for %%E in (1) do rem"') do set "ESCchar=%%E"
 
+@echo on
+tools\lzsa.exe -f2 -r -c astrotscr.bin astrotscr.lzsa
+@if errorlevel 1 goto Failed
+@echo off
+dir /-c astrotscr.lzsa|findstr /R /C:"astrotscr.lzsa"
+
+call :FileSize astrotscr.lzsa
+set lzsasizes=%fsize%
+
 rem First pass on TASM, LZSA stream sizes are not known yet
 @echo on
-tools\tasm -85 -b asteroid0.asm asteroid0.bin -dLZSASIZES=4444 -dLZSASIZE1=9999
+tools\tasm -85 -b asteroid0.asm asteroid0.bin -dLZSASIZES=%lzsasizes% -dLZSASIZE1=9999
 @if errorlevel 1 goto Failed
 @echo off
 
@@ -30,15 +39,6 @@ tools\pasmo --w8080 asteroid1.asm asteroid1.bin asteroid1.txt
 findstr /B "Astro" asteroid1.txt
 
 dir /-c asteroid1.bin|findstr /R /C:"asteroid1.bin"
-
-@echo on
-tools\lzsa.exe -f2 -r -c astrotscr.bin astrotscr.lzsa
-@if errorlevel 1 goto Failed
-@echo off
-dir /-c astrotscr.lzsa|findstr /R /C:"astrotscr.lzsa"
-
-call :FileSize astrotscr.lzsa
-set lzsasizes=%fsize%
 
 @echo on
 tools\lzsa.exe -f2 -r -c asteroid1.bin asteroid1.lzsa

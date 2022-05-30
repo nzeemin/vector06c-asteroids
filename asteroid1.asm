@@ -3,15 +3,15 @@
 INCLUDE "asteroid0.inc"
 
 ShipsPerGame		EQU	3
-BulletTimerVal		EQU	28	; Bullet lifespan, gameloop cycles
+BulletTimerVal		EQU	24	; Bullet lifespan, gameloop cycles
 WaveTimerVal		EQU	60	; Time before new wave, gameloop cycles
-ShipHitTimerVal		EQU	40	; Time for ship explosion, gameloop cycles
+ShipHitTimerVal		EQU	50	; Time for ship explosion, gameloop cycles
 GameOverTimerVal	EQU	120	; Time after Game Over sign to return to demo mode
 
 ;----------------------------------------------------------------------------
 
-  ORG $02E0
-Start:
+  ORG Start
+;Start:
 ; Clear the plane 3 ($8000-$BFFF) from any dirt
   call ClearPlane3
 ; Draw two text strings under the title screen
@@ -465,10 +465,10 @@ ShipShotObjects:	db	0, 5, 0,0,0,0, 0,0
 ScrShotObjects:		db	0, 5, 0,0,0,0, 0,0
 			db	0, 5, 0,0,0,0, 0,0
 ; Ship debris objects, 4 records
-ShipDebrisObjects:	db	0, $87, 0,0,0,0, -1,-3	; goes SW
-			db	0, $07, 0,0,0,0, -2,1	; goes NW
-			db	0, $07, 0,0,0,0, 1,-1	; goes SE
-			db	0, $87, 0,0,0,0, 2,2	; goes NE
+ShipDebrisObjects:	db	0, $87, 0,0,0,0, -3,-2	; goes SW
+			db	0, $87, 0,0,0,0, 2,3	; goes NE
+			db	0, $07, 0,0,0,0, 3,-1	; goes SE
+			db	0, $07, 0,0,0,0, -3,3	; goes NW
 ; End of the Objects array
 ;
 ; X,Y shifts from object's sprite left-top corner to the object center
@@ -486,9 +486,9 @@ DrawObjsXYShift:
 ObjectsHitRadius:
   db	64		; 0 - ship
   db	36		; 1 - sauser
-  db	96		; 2 - S-size rock
-  db	120		; 3 - M-size rock
-  db	160		; 4 - L-size rock
+  db	102		; 2 - S-size rock
+  db	144		; 3 - M-size rock
+  db	216		; 4 - L-size rock
   db	0		; 5 - ship or sauser bullets
   db	0		; 6 - shrapnel
   db	0		; 7 - debris
@@ -608,8 +608,8 @@ GetShipDirSinCos_2:
 
 ; ShipDir to Sine table
 SineTbl:
-  db	0,12,24,36,45,53,59,63,64,63,59,53,45,36,24,12
-  db	0,-12,-24,-36,-45,-53,-59,-63,-64,-63,-59,-53,-45,-36,-24,-12
+  db	0,10,20,29,37,43,48,51,52,51,48,43,37,29,20,10
+  db	0,-10,-20,-29,-37,-43,-48,-51,-52,-51,-48,-43,-37,-29,-20,-10
 
 ; Collision detection for all objects
 HitDectection:
@@ -1323,8 +1323,7 @@ InitWaveVars:
   jp nz,InitWaveVars_0
   ld a,2
 InitWaveVars_0:
-; Calculate number of rocks: L1 = 3, L2 = 4, L3=5 etc.
-  inc a
+; Calculate number of rocks: L1 = 2, L2 = 3, L3 = 4 etc.
   inc a
   ld b,a		; number of rocks to create
   ld de,AstObjects
@@ -1486,10 +1485,10 @@ SetRandomSpeed:
   and $8F		; keep the sign bit and lower nibble
   jp p,SetRandomSpeed_1	; jump if positive
   or $F0		; extend the sign for negative number
-  sub 3			; -3..-18
+  sub 2			; -2..-17
   jp SetRandomSpeed_2
 SetRandomSpeed_1:
-  add a,3		; 3..18
+  add a,2		; 2..17
 SetRandomSpeed_2:
   ld (hl),a		; set X velocity
   inc hl
@@ -1497,10 +1496,10 @@ SetRandomSpeed_2:
   and $8F		; keep the sign bit and lower nibble
   jp p,SetRandomSpeed_3	; jump if positive
   or $F0		; extend the sign for negative number
-  sub 3			; -3..-18
+  sub 2			; -2..-17
   jp SetRandomSpeed_4
 SetRandomSpeed_3:
-  add a,3		; 3..18
+  add a,2		; 2..17
 SetRandomSpeed_4:
   ld (hl),a		; set Y velocity
   pop de
