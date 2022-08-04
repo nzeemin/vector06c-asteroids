@@ -16,8 +16,8 @@ Porting status: Demo version, Work In Progress.
  - `tasm.exe` compatible with Windows 10 + `TASM85.TAB`
    http://old-dos.ru/dl.php?id=1926
 
- - `lzsa.exe`
-   https://github.com/emmanuel-marty/lzsa/releases
+ - `salvador.exe` ZX0 compressor
+   https://github.com/emmanuel-marty/salvador/releases
 
 
 ## Links

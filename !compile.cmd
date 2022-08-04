@@ -4,23 +4,23 @@ if exist asteroid0.bin del asteroid0.bin
 if exist asteroid0.inc del asteroid0.inc
 if exist asteroid1.bin del asteroid1.bin
 if exist asteroid1.txt del asteroid1.txt
-if exist astrotscr.lzsa del astrotscr.lzsa
-if exist asteroid1.lzsa del asteroid1.lzsa
+if exist astrotscr.zx0 del astrotscr.zx0
+if exist asteroid1.zx0 del asteroid1.zx0
 
 rem Define ESCchar to use in ANSI escape sequences
 rem https://stackoverflow.com/questions/2048509/how-to-echo-with-different-colors-in-the-windows-command-line
 for /F "delims=#" %%E in ('"prompt #$E# & for %%E in (1) do rem"') do set "ESCchar=%%E"
 
 @echo on
-tools\lzsa.exe -f2 -r -c astrotscr.bin astrotscr.lzsa
+tools\salvador.exe -classic astrotscr.bin astrotscr.zx0
 @if errorlevel 1 goto Failed
 @echo off
-dir /-c astrotscr.lzsa|findstr /R /C:"astrotscr.lzsa"
+dir /-c astrotscr.zx0|findstr /R /C:"astrotscr.zx0"
 
-call :FileSize astrotscr.lzsa
+call :FileSize astrotscr.zx0
 set lzsasizes=%fsize%
 
-rem First pass on TASM, LZSA stream sizes are not known yet
+rem First pass on TASM, ZX0 stream sizes are not known yet
 @echo on
 tools\tasm -85 -b asteroid0.asm asteroid0.bin -dLZSASIZES=%lzsasizes% -dLZSASIZE1=9999
 @if errorlevel 1 goto Failed
@@ -41,21 +41,21 @@ findstr /B "Astro" asteroid1.txt
 dir /-c asteroid1.bin|findstr /R /C:"asteroid1.bin"
 
 @echo on
-tools\lzsa.exe -f2 -r -c asteroid1.bin asteroid1.lzsa
+tools\salvador.exe -classic asteroid1.bin asteroid1.zx0
 @if errorlevel 1 goto Failed
 @echo off
-dir /-c asteroid1.lzsa|findstr /R /C:"asteroid1.lzsa"
+dir /-c asteroid1.zx0|findstr /R /C:"asteroid1.zx0"
 
-call :FileSize asteroid1.lzsa
+call :FileSize asteroid1.zx0
 set lzsasize1=%fsize%
 
-rem Second pass on TASM, now we know LZSA stream sizes
+rem Second pass on TASM, now we know ZX0 stream sizes
 @echo on
 tools\tasm -85 -b asteroid0.asm asteroid0.bin -dLZSASIZES=%lzsasizes% -dLZSASIZE1=%lzsasize1%
 @if errorlevel 1 goto Failed
 @echo off
 
-copy /b asteroid0.bin+astrotscr.lzsa+asteroid1.lzsa asteroids.rom >nul
+copy /b asteroid0.bin+astrotscr.zx0+asteroid1.zx0 asteroids.rom >nul
 @if errorlevel 1 goto Failed
 
 dir /-c asteroids.rom|findstr /R /C:"asteroids.rom"
